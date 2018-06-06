@@ -148,21 +148,8 @@ window.onload = function ()
 				if (this.clipAmmo < 0)
 					this.clipAmmo = 0;
 				
-				
+				// set time to start ammo recharge
 				this.ammoRechargeDate = new Date().getTime() + this.initialRechargeDelay;
-				
-				// NOPE; can't global; p2 stops p1 recharge
-				// maybe use date time ?
-				/*// recharge clip based on recharge delay
-				clearTimeout(ammoRechargeTimeout);
-				//ammoRechargeTimeout = setTimeout()
-				ammoRechargeTimeout = setTimeout(function ()
-				{
-					if (this.clipAmmo < this.clipSize)
-						this.clipAmmo++;
-					ammoRechargeTimeout2 = setTimeout(ammoRechargeTimeout, 1000);
-
-				}.bind(this), this.initialRechargeDelay)*/
 
 				// spawn bullet (add it to bullets array) based on fire mode
 				switch (this.fireMode)
@@ -199,10 +186,6 @@ window.onload = function ()
 						i--;
 					}
 				}
-				for (let i = 0; i < this.bullets.length; i++)
-				{
-					// nope ...
-				}	
 
 			}		
 
@@ -231,7 +214,6 @@ window.onload = function ()
 		Variables();
 
 		// initialize players
-		players = [];
 		let keybindings =
 		{
 			up: 87,
@@ -257,12 +239,17 @@ window.onload = function ()
 			up: 73,
 			down: 75,
 			left: 74,
-			right: 76
+			right: 76,
+			shoot: 16
 		}	
-		player = new Player(cw / 2, canvas.height / 2, "#00ff22", keybindings);
+		player = new Player("John", cw / 2, canvas.height / 2, "#00ff22", keybindings);
 		players.push(player);*/
 		
-		Update();		// main update fn which repeats itself every tick with requestAnimationFrame
+		
+		MenuUpdate();	// draw main menu; main menu will later call update
+		//Update();		// main update fn which repeats itself every tick with requestAnimationFrame
+	
+		
 	}
 
 	// functions #####################################################################################################
@@ -270,11 +257,10 @@ window.onload = function ()
 	{
 		// general
 		cw = canvas.width;			// magic constant for converstion from pixels to multiples of canvas width is 0.0008; for cw * x, x = pixel_value * 0.0008
-		numberOfPlayers = 2;
 		endgame = false;
 		restartKey = false;
-		//ammoRechargeTimeout = null;
-		//ammoRechargeTimeout2 = null;
+		gameState = "menu";
+		players = [];
 	}
 
 	function KeyDownHandler(e)
@@ -286,7 +272,7 @@ window.onload = function ()
 		}
 
 		// players keybindings
-		for (let i = 0; i < numberOfPlayers; i++)
+		for (let i = 0; i < players.length; i++)
 		{
 			for (let keybinding of Object.values(players[i].keybindings))
 			{
@@ -299,7 +285,7 @@ window.onload = function ()
 	function KeyUpHandler(e)
 	{
 		// players keybindings
-		for (let i = 0; i < numberOfPlayers; i++)
+		for (let i = 0; i < players.length; i++)
 		{
 			for (let keybinding of Object.values(players[i].keybindings))
 			{
@@ -451,7 +437,7 @@ window.onload = function ()
 
 	function DrawPlayers()
 	{
-		for (let i = 0; i < numberOfPlayers; i++)
+		for (let i = 0; i < players.length; i++)
 		{
 			// player body
 			ctx.beginPath();
@@ -461,7 +447,7 @@ window.onload = function ()
 			ctx.closePath();
 		}
 
-		for (let i = 0; i < numberOfPlayers; i++)
+		for (let i = 0; i < players.length; i++)
 		{ // this is separate from player body, so that health is always drawn on top
 			
 			// player health as text
@@ -517,7 +503,7 @@ window.onload = function ()
 
 	function DrawBullets()
 	{
-		for (let i = 0; i < numberOfPlayers; i++)
+		for (let i = 0; i < players.length; i++)
 		{
 			for (let bullet of players[i].bullets)
 			{
@@ -532,7 +518,7 @@ window.onload = function ()
 
 	function UpdateBullets()
 	{
-		for (let i = 0; i < numberOfPlayers; i++)
+		for (let i = 0; i < players.length; i++)
 		{ // i is index of player who fired bullet
 			for (let j = 0; j < players[i].bullets.length; j++)
 			{ // j is index of bullet in question
@@ -560,7 +546,7 @@ window.onload = function ()
 			{ // j is index of bullet in question
 				let b = players[i].bullets[j];		// use only for read
 
-				for (let k = 0; k < numberOfPlayers; k++)
+				for (let k = 0; k < players.length; k++)
 				{ // k is index of player who caught the bullet
 					collisionResult = CollisionCheckOutside(b.x, b.y, b.size, b.size, players[k].x, players[k].y, players[k].size, players[k].size);
 					if (collisionResult.x != null)
@@ -591,7 +577,7 @@ window.onload = function ()
 	function PauseGame()
 	{
 		// TODO: allow pause during midgame and resuming or going to menu
-		for (let i = 0; i < numberOfPlayers; i++)
+		for (let i = 0; i < players.length; i++)
 		{
 			players[i].maxSpeed = 0;
 			players[i].maxDiagonalSpeed = 0;
@@ -619,7 +605,7 @@ window.onload = function ()
 
 		let alivePlayers = 0;
 		let alivePlayerIndex;
-		for (let i = 0; i < numberOfPlayers; i++)
+		for (let i = 0; i < players.length; i++)
 		{
 			if (players[i].health > 0)
 			{
@@ -678,7 +664,7 @@ window.onload = function ()
 	{
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-		for (let i = 0; i < numberOfPlayers; i++)
+		for (let i = 0; i < players.length; i++)
 		{
 			players[i].MoveCheck();			// check if player can move (detect key-press; control player speed; wall collision)
 			players[i].SpawnBulletCheck();	// check if bullet can spawn (detect key-press; clip size and fire rate control)
@@ -705,6 +691,30 @@ window.onload = function ()
 
 		//setInterval(draw, 10);
 		requestAnimationFrame(Update);
+	}
+
+	// Main menu functions ##################################################################################################
+	function MenuUpdate()
+	{
+		// draw default players and settings (or read from file)
+		// on every change, update variables (and save to file)
+		// on press play, change mode and call Update()
+
+
+		// make a button
+
+		// draw players for customization
+		for (let i = 0; i < players.length; i++)
+		{
+
+		}	
+
+		
+		if (gameState == "menu")
+		{
+			requestAnimationFrame(MenuUpdate);
+		}	
+		
 	}
 
 
