@@ -1,14 +1,18 @@
 window.onload = function ()
 {
+	// canvas initialization
 	var canvas = document.getElementById("myCanvas");
 	var ctx = canvas.getContext("2d");
-
-	document.addEventListener("keydown", KeyDownHandler, false);
-	document.addEventListener("keyup", KeyUpHandler, false);
-
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
-	
+
+	// event listeners
+	document.addEventListener("keydown", KeyDownHandler, false);
+	document.addEventListener("keyup", KeyUpHandler, false);
+	canvas.addEventListener("mousemove", MouseMoveHandler, false);
+	canvas.addEventListener("mouseup", MouseUpHandler, false);
+
+	// resizing
 	// works but players are left outside screen; update: not if width is 100%, but there is scaling problem
 	window.onresize = resizeHandler;
 	function resizeHandler()
@@ -19,6 +23,9 @@ window.onload = function ()
 
 		// update some variables; recalculate x and y
 	}
+
+	// better neon glow
+	ctx.globalCompositeOperation = "lighter";
 
 	// classes ########################################################################################################
 	class Player
@@ -247,17 +254,17 @@ window.onload = function ()
 		}	
 		player = new Player("John", cw / 2, canvas.height / 2, "#00ff22", keybindings);
 		players.push(player);
+		/*players.push(player);
 		players.push(player);
 		players.push(player);
 		players.push(player);
 		players.push(player);
 		players.push(player);
-		players.push(player);
-		players.push(player);
+		players.push(player);*/
 		
 		
-		MenuUpdate();	// draw main menu; main menu will later call update
-		//Update();		// main update fn which repeats itself every tick with requestAnimationFrame
+		//MenuUpdate();	// draw main menu; main menu will later call update
+		Update();		// main update fn which repeats itself every tick with requestAnimationFrame
 	
 		
 	}
@@ -272,8 +279,18 @@ window.onload = function ()
 		gameState = "menu";
 		players = [];
 		assets = { images: [], sounds: [] };
+		mouseX = null;
+		mouseY = null;
+		mouseUpX = null;
+		mouseUpY = null;
+
+		// main menu
+		editingNameIndex = null;		// index of player whose name is beeing edited
+		upperCase = false;				// is shift pressed?
+
 	}
 
+	// TODO: text in FF; keyCode depricated?; test all in other  browsers	
 	function KeyDownHandler(e)
 	{
 		// general
@@ -291,6 +308,32 @@ window.onload = function ()
 					keybinding[1] = true;
 			}
 		}
+		
+		// name edit
+		if (editingNameIndex != null)
+		{
+			// only letters and numbers
+			for (let i = 48; i <= 90; i++)
+			{
+				if (i == e.keyCode)
+				{
+					console.log(upperCase);
+					if (upperCase)
+						players[editingNameIndex].name += String.fromCharCode(e.keyCode);
+					else
+						players[editingNameIndex].name += String.fromCharCode(e.keyCode).toLocaleLowerCase();
+				}	
+			}
+
+			// backspace
+			if (e.keyCode == 8)
+				players[editingNameIndex].name = players[editingNameIndex].name.slice(0, -1);
+			
+		}
+
+		// upper case; is shift pressed?
+		if (e.keyCode == 16)
+			upperCase = true;
 	}
 
 	function KeyUpHandler(e)
@@ -304,6 +347,25 @@ window.onload = function ()
 					keybinding[1] = false;
 			}
 		}
+
+		// upper case; is shift?
+		if (e.keyCode == 16)
+			upperCase = false;
+	}
+
+	function MouseMoveHandler(e)
+	{
+		//console.log(e.x + " " + e.y);
+		mouseX = e.x;
+		mouseY = e.y;
+	}
+
+	function MouseUpHandler(e)
+	{
+		//console.log(e.x + " " + e.y + "  UP");
+		mouseUpX = e.x;
+		mouseUpY = e.y;
+		editingNameIndex = null;
 	}
 
 	function LoadAssets()
@@ -325,7 +387,6 @@ window.onload = function ()
 		
 	}
 
-	
 	function CollisionCheckPlayers()
 	{ // player with player collision check
 		let collisions = [];	// array that holds all collisions as objects with information on who collided with who and where
@@ -470,11 +531,13 @@ window.onload = function ()
 		for (let i = 0; i < players.length; i++)
 		{
 			// player body
-			ctx.beginPath();
+			/*ctx.beginPath();
 			ctx.rect(players[i].x - players[i].size / 2, players[i].y - players[i].size / 2, players[i].size, players[i].size);
 			ctx.fillStyle = players[i].color;
 			ctx.fill();
-			ctx.closePath();
+			ctx.closePath();*/
+
+			DrawNeonRect(players[i].x - players[i].size / 2, players[i].y - players[i].size / 2, players[i].size, players[i].size, players[i].color);
 		}
 
 		for (let i = 0; i < players.length; i++)
@@ -529,6 +592,72 @@ window.onload = function ()
 			}
 
 		}
+	}
+
+	function DrawRectangle(x, y, w, h, border)
+	{
+		ctx.beginPath();
+		ctx.moveTo(x + border, y);
+		ctx.lineTo(x + w - border, y);
+		ctx.quadraticCurveTo(x + w - border, y, x + w, y + border);
+		ctx.lineTo(x + w, y + h - border);
+		ctx.quadraticCurveTo(x + w, y + h - border, x + w - border, y + h);
+		ctx.lineTo(x + border, y + h);
+		ctx.quadraticCurveTo(x + border, y + h, x, y + h - border);
+		ctx.lineTo(x, y + border);
+		ctx.quadraticCurveTo(x, y + border, x + border, y);
+		ctx.closePath();
+		ctx.stroke();
+	}
+	
+	function DrawNeonRect(x, y, w, h, color)
+	{
+		let r = hexToRgb(color).r;
+		let g = hexToRgb(color).g;
+		let b = hexToRgb(color).b;
+		ctx.shadowColor = color;
+		ctx.shadowBlur = 10;
+		ctx.strokeStyle = "rgba(" + r + "," + g + "," + b + ",0.2)";
+		ctx.lineWidth=7.5;
+		DrawRectangle(x, y, w, h, 1.5);
+		ctx.lineWidth=6;
+		DrawRectangle(x, y, w, h, 1.5);
+		ctx.lineWidth=4.5;
+		DrawRectangle(x, y, w, h, 1.5);
+		ctx.lineWidth=3;
+		DrawRectangle(x, y, w, h, 1.5);
+		ctx.strokeStyle= "#fff";
+		ctx.lineWidth=1.5;
+		DrawRectangle(x, y, w, h, 1.5);
+		
+		ctx.shadowBlur = 0;
+	};
+
+	function componentToHex(c)
+	{
+		var hex = c.toString(16);
+		return hex.length == 1 ? "0" + hex : hex;
+	}
+	
+	function rgbToHex(r, g, b)
+	{
+		return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+	}
+
+	function hexToRgb(hex)
+	{
+		// Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+		var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+		hex = hex.replace(shorthandRegex, function(m, r, g, b) {
+			return r + r + g + g + b + b;
+		});
+	
+		var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+		return result ? {
+			r: parseInt(result[1], 16),
+			g: parseInt(result[2], 16),
+			b: parseInt(result[3], 16)
+		} : null;
 	}
 
 	function DrawBullets()
@@ -748,10 +877,56 @@ window.onload = function ()
 		let fontSizePlayer = cw * 0.03;
 		for (let i = 0; i < players.length; i++)
 		{
+			// name
+			let nameYoffset = cw * 0.1;
+			let nameYspacing = i * fontSizePlayer * 1.5;
+			let nameX = cw * 0.08;
+			let nameY = nameYoffset + nameYspacing;
 			ctx.font = fontSizePlayer + "px Arial";
 			ctx.fillStyle = players[i].color;
-			ctx.fillText(players[i].name, cw * 0.08, cw * 0.1 + i * fontSizePlayer * 1.5);
+			ctx.fillText(players[i].name, nameX, nameY);
+
+			// edit name button
+			let buttonSize = cw * 0.02;
+			let editNameButtonX = cw * 0.2;
+			let editNameButtonY = nameYoffset + nameYspacing - fontSizePlayer * 0.35 - buttonSize / 2;
+			ctx.beginPath();
+			ctx.rect(editNameButtonX, editNameButtonY, buttonSize, buttonSize);
+			ctx.fillStyle = "#eee";
+			ctx.fill();
+			ctx.closePath();
+			if (PointIsInside(mouseUpX, mouseUpY, editNameButtonX, editNameButtonY, buttonSize, buttonSize))
+			{
+				console.log("click " + i);
+				mouseUpX = null;
+				mouseUpX = null;
+				editingNameIndex = i;
+			}
+
+			
+			
+			
 		}
+		// draw cursor
+		for (let i = 0; i < players.length; i++)
+		{
+			if (editingNameIndex == i)
+			{
+				let nameYoffset = cw * 0.1;
+				let nameYspacing = i * fontSizePlayer * 1.5;
+				let nameX = cw * 0.08;
+
+				let cursorHeight = cw * 0.026;
+				let cursorWidth = cw * 0.002;
+				let cursorX = nameX + ctx.measureText(players[i].name).width + cw * 0.002;
+				let cursorY = nameYoffset + nameYspacing - fontSizePlayer * 0.35 - cursorHeight / 2;
+				ctx.beginPath();
+				ctx.rect(cursorX, cursorY, cursorWidth, cursorHeight);
+				ctx.fillStyle = "#eee";
+				ctx.fill();
+				ctx.closePath();
+			}
+		}	
 
 		
 
@@ -761,6 +936,18 @@ window.onload = function ()
 			requestAnimationFrame(MenuUpdate);
 		}	
 		
+	}
+
+	function PointIsInside(a, b, x, y, w, h)
+	{ // is point with coordinates a,b inside of box; box x,y are its upper-left coordinates
+		if
+		(
+			(a > x && a < x + w) &&
+			(b > y && b < y + h)
+		)
+			return true;
+		else
+			return false;
 	}
 
 
