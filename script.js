@@ -36,6 +36,15 @@ window.onload = function ()
 			this.decceleration = this.acceleration / 3;		// must be <= accelearation/2
 			this.velX = 0;									// velocity, a vector, incudes direction AND speed
 			this.velY = 0;
+			this.clipSize = 5;
+			this.clipAmmo = this.clipSize;
+			this.canShoot = true;
+			this.fireRateDelay = 500;						// fire rate delay in milliseconds; default 500
+			this.fireMode = null;
+			this.rechargeDelay = 5000;						// default 5000
+			this.bullets = [];
+			this.bulletOffsetFromPlayer = cw * 0.008;
+			this.bulletSpeed = cw * 0.006;					// default 0.006
 
 			this.keybindings =
 			{
@@ -43,15 +52,9 @@ window.onload = function ()
 				up: [keybindings.up, false],
 				down: [keybindings.down, false],
 				left: [keybindings.left, false],
-				right: [keybindings.right, false]
+				right: [keybindings.right, false],
+				shoot: [keybindings.shoot, false]
 			};
-
-		}
-
-		SpawnBulletCheck()
-		{
-			// TODO: move below MoveCheck() when done
-
 
 		}
 
@@ -129,10 +132,67 @@ window.onload = function ()
 			// collsion check with other players is defined as separate function(s)
 		}
 
+		SpawnBulletCheck()
+		{
+			if (this.keybindings.shoot[1] && this.clipAmmo > 0 && this.canShoot)
+			{
+				// disable shooting based on fire rate
+				this.canShoot = false;
+				setTimeout(function () { this.canShoot = true;}.bind(this), this.fireRateDelay);
 
+				// spend bullet from clip
+				this.clipAmmo--;
+				if (this.clipAmmo < 0)
+					this.clipAmmo = 0;
+				
+				// recharge clip based on recharge delay
+				setTimeout(function ()
+				{
+					if (this.clipAmmo < this.clipSize)
+						this.clipAmmo++;
+				}.bind(this), this.rechargeDelay)
 
+				// spawn bullet (add it to bullets array) based on fire mode
+				switch (this.fireMode)
+				{
+					case "octa":
+					{
+						
+						break;	
+					}	
+					default:
+					{ // default firing style; quad fire
+						// up
+						this.bullets.push(new Bullet(this.x, this.y - this.size / 2 - this.bulletOffsetFromPlayer, 0, -this.bulletSpeed));
+						// down	
+						this.bullets.push(new Bullet(this.x, this.y + this.size / 2 + this.bulletOffsetFromPlayer, 0, this.bulletSpeed));
+						// left
+						this.bullets.push(new Bullet(this.x - this.size / 2 - this.bulletOffsetFromPlayer, this.y, -this.bulletSpeed, 0));
+						// left
+						this.bullets.push(new Bullet(this.x + this.size / 2 + this.bulletOffsetFromPlayer, this.y, this.bulletSpeed, 0));
 
-	}	
+						break;
+					}	
+				}
+
+			}		
+
+		}
+
+	}
+
+	class Bullet
+	{ // default bullet
+		constructor(x, y, xStep, yStep)
+		{
+			this.x = x;
+			this.y = y;
+			this.xStep = xStep;
+			this.yStep = yStep;
+			this.size = cw * 0.006;
+			this.damage = 10;
+		}
+	}
 
 	// main logic #####################################################################################################
 	main();
@@ -148,7 +208,8 @@ window.onload = function ()
 			up: 87,
 			down: 83,
 			left: 65,
-			right: 68
+			right: 68,
+			shoot: 32
 		}	
 		let player = new Player(cw * 0.08, canvas.height / 2, "#0055cc", keybindings);
 		players.push(player);
@@ -157,7 +218,8 @@ window.onload = function ()
 			up: 38,
 			down: 40,
 			left: 37,
-			right: 39
+			right: 39,
+			shoot: 96
 		}	
 		player = new Player(cw - (cw * 0.08), canvas.height / 2, "#cc1100", keybindings);
 		players.push(player);
@@ -171,8 +233,7 @@ window.onload = function ()
 		player = new Player(cw / 2, canvas.height / 2, "#00ff22", keybindings);
 		players.push(player);*/
 		
-		SpawnBulletTimer();
-		Draw();		// main draw fn which repeats itself every tick with requestAnimationFrame
+		Update();		// main update fn which repeats itself every tick with requestAnimationFrame
 	}
 
 	// functions #####################################################################################################
@@ -181,33 +242,8 @@ window.onload = function ()
 		// general
 		cw = canvas.width;			// magic constant for converstion from pixels to multiples of canvas width is 0.0008; for cw * x, x = pixel_value * 0.0008
 		numberOfPlayers = 2;
-		projectileSize = cw * 0.008;
-		shootDelay = 500;							// in miliseconds; original : 1000			; player property?
-		projectileOffsetFromSquare = cw * 0.008;	// ; player property?
-
-		projectileSpeed = cw * 0.008;
-		projectileDamage = 10;
-
 		endgame = false;
 		restartKey = false;
-
-		// player 1
-			// player
-			
-
-			// projectile
-			shoot1 = false;
-			shoot1Enabled = true;
-			projectiles1 = [];
-
-		/*
-			
-
-			// projectile for P2
-			shoot2 = false;
-			shoot2Enabled = true;
-			projectiles2 = [];
-			*/
 	}
 
 	function KeyDownHandler(e)
@@ -283,7 +319,9 @@ window.onload = function ()
 	}
 
 	function CollisionCheckInside(x1, y1, w1, h1, x2, y2, w2, h2)
-	{ // check if box1 is inside of box2; don't allow going outside of box2; coordinates assume center of boxes
+	{ // check if box1 is inside of box2; don't allow going outside of box2 by returning new x and y position that is in bounds
+	  // coordinates assume center of boxes
+		
 		let newX = null;
 		let newY = null;
 
@@ -311,7 +349,7 @@ window.onload = function ()
 		return ({ x: newX, y: newY });
 	}
 
-	function CollisionCheckOutside(x1, y1, w1, h1, x2, y2, w2, h2)
+	function CollisionCheckOutside(x1, y1, w1, h1, x2, y2, w2, h2)	// fn returns point of collision (sort of)
 	{ // check if box1 is outside of box2; don't allow clipping through box2; coordinates assume center of boxes
 		let newX = null;
 		let newY = null;
@@ -364,11 +402,6 @@ window.onload = function ()
 		return ({ x: newX, y: newY });
 	}
 
-	SpawnBulletTimer()
-	{
-		// ? set different fire rates for players
-	}
-
 	function DrawDebugText(text)
 	{
 		ctx.font = "20px Arial";
@@ -380,135 +413,81 @@ window.onload = function ()
 	{
 		for (let i = 0; i < numberOfPlayers; i++)
 		{
+			// player body
 			ctx.beginPath();
 			ctx.rect(players[i].x - players[i].size / 2, players[i].y - players[i].size / 2, players[i].size, players[i].size);
 			ctx.fillStyle = players[i].color;
 			ctx.fill();
 			ctx.closePath();
-		}	
 
-		
-		/*
-		// player 1 health text
-		ctx.font = "12px Arial";
-		ctx.fillStyle = "#eee";
-		//ctx.fillText(player1Health, square1X + (squareSize / 2) - 10, square1Y - 15);
+			// player health as text
+			ctx.font = "12px Arial";
+			ctx.fillStyle = "#eee";
+			ctx.fillText(players[i].health, players[i].x - 10, players[i].y - players[i].size / 2 - cw * 0.012);
 
-		// player 1 health bar
-		ctx.beginPath();
-		var w = squareSize * 1.3;
-		ctx.rect(square1X - (w - squareSize) / 2, square1Y - cw * 0.01, w, cw * 0.001);
-		ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-		ctx.fill();
-		ctx.closePath();
-		ctx.beginPath();
-		var w = squareSize * 1.3;
-		ctx.rect(square1X - (w - squareSize) / 2, square1Y - cw * 0.01, w*player1Health/100, cw * 0.001);
-		ctx.fillStyle = "#00ff33";
-		ctx.fill();
-		ctx.closePath();
-
-
-		// player 2 health text
-		ctx.font = "12px Arial";
-		ctx.fillStyle = "#eee";
-		//ctx.fillText(player2Health, square2X + (squareSize / 2) - 10, square2Y - 5);
-
-		// player 2 health bar
-		ctx.beginPath();
-		var w = squareSize * 1.3;
-		ctx.rect(square2X - (w - squareSize) / 2, square2Y - cw * 0.01, w, cw * 0.001);
-		ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-		ctx.fill();
-		ctx.closePath();
-		ctx.beginPath();
-		var w = squareSize * 1.3;
-		ctx.rect(square2X - (w - squareSize) / 2, square2Y - cw * 0.01, w*player2Health/100, cw * 0.001);
-		ctx.fillStyle = "#00ff33";
-		ctx.fill();
-		ctx.closePath();
-		*/
-
+			// player health bar
+			let barWidth = players[i].size * 1.3;
+			let barHeight = cw * 0.001;
+			ctx.beginPath();		// health bar background
+			ctx.rect(players[i].x - barWidth / 2, players[i].y - players[i].size / 2 - cw * 0.01, barWidth, barHeight);
+			ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+			ctx.fill();
+			ctx.closePath();
+			ctx.beginPath();		// health bar foreground
+			ctx.rect(players[i].x - barWidth / 2, players[i].y - players[i].size / 2 - cw * 0.01, barWidth * players[i].health / 100, barHeight);
+			ctx.fillStyle = "#00ff33";
+			ctx.fill();
+			ctx.closePath();
+		}
 	}
 
-	function DrawProjectiles()
+	function DrawBullets()
 	{
-		// player 1
-		for (var i = 0; i < projectiles1.length; i++)
+		for (let i = 0; i < numberOfPlayers; i++)
 		{
-			// right projectile
-			var x = projectiles1[i].x;
-			var y = projectiles1[i].y;
-			ctx.beginPath();
-			ctx.rect(x, y, projectileSize, projectileSize);
-			ctx.fillStyle = projectiles1[i].color;
-			ctx.fill();
-			ctx.closePath();
-		}
-
-		// player 2
-		for (var i = 0; i < projectiles2.length; i++)
-		{
-			// left projectile
-			var x = projectiles2[i].x;
-			var y = projectiles2[i].y;
-			ctx.beginPath();
-			ctx.rect(x, y, projectileSize, projectileSize);
-			ctx.fillStyle = projectiles2[i].color;
-			ctx.fill();
-			ctx.closePath();
-		}
-
+			for (let bullet of players[i].bullets)
+			{
+				ctx.beginPath();
+				ctx.rect(bullet.x - bullet.size / 2, bullet.y - bullet.size / 2, bullet.size, bullet.size);
+				ctx.fillStyle = "#eee";
+				ctx.fill();
+				ctx.closePath();
+			}
+		}	
 	}
 
-	function spawnProjectile1()
-	{	// player 1
-		var x1 = square1X + squareSize + projectileOffsetFromSquare;
-		var y1 = square1Y + (squareSize / 2) - (projectileSize / 2);
-
-		// unnecessary projectile coloring
-		var r, g, b;
-		r = g = b = 0;
-		while (r + g + b < 255)
+	function UpdateBullets()
+	{
+		for (let i = 0; i < numberOfPlayers; i++)
 		{
-			r = Math.floor((Math.random() * 255));
-			g = Math.floor((Math.random() * 255));
-			b = Math.floor((Math.random() * 255));
+			for (let j = 0; j < players[i].bullets.length; j++)
+			{
+				let bullet = players[i].bullets[j];		// use only for read
+				
+				// update bullet position
+				players[i].bullets[j].x += players[i].bullets[j].xStep;
+				players[i].bullets[j].y += players[i].bullets[j].yStep;
+				
+				// check for collision, draw bullet last time and delete that bullet from array
+				let collisionResult = CollisionCheckInside(bullet.x, bullet.y, bullet.size, bullet.size, canvas.width / 2, canvas.height / 2, canvas.width, canvas.height);
+				if (collisionResult.x != null)
+				{
+					players[i].bullets[j].x = collisionResult.x;
+					players[i].bullets[j].y = collisionResult.y;
+
+					players[i].bullets.splice(j, 1);
+				}	
+
+			}	
 		}
-		var color1 = "rgb(" + r + ", " + g + ", " + b + ")";
-
-		var p = { x: x1, y: y1, vectorX: 0, vectorY: 0, color: color1 };		// maybe read vectrs from fn parametars
-		projectiles1.push(p);
-
 	}
 
-	function spawnProjectile2()
-	{	// player 2
-		var x1 = square2X - projectileOffsetFromSquare - projectileSize;
-		var y1 = square2Y + (squareSize / 2) - (projectileSize / 2);
-
-		// unnecessary projectile coloring
-		var r, g, b;
-		r = g = b = 0;
-		while (r + g + b < 255)
-		{
-			r = Math.floor((Math.random() * 255));
-			g = Math.floor((Math.random() * 255));
-			b = Math.floor((Math.random() * 255));
-		}
-		var color1 = "rgb(" + r + ", " + g + ", " + b + ")";
-
-		var p = { x: x1, y: y1, vectorX: 0, vectorY: 0, color: color1 };		// maybe read vectrs from fn parametars
-		projectiles2.push(p);
-
-	}
-
-	function DamagePlayer1(damage)
+	function DamagePlayer1(damage)	// depricated
 	{
 		player1Health -= damage;
 	}
 
-	function DamagePlayer2(damage)
+	function DamagePlayer2(damage)	// depricated
 	{
 		player2Health -= damage;
 	}
@@ -521,148 +500,24 @@ window.onload = function ()
 		shoot2Enabled = false;
 	}
 
-	function Draw()
+	function Update()
 	{
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
 		for (let i = 0; i < numberOfPlayers; i++)
 		{
-			players[i].MoveCheck();
-		}	
+			players[i].MoveCheck();			// check if player can move (detect key-press; control player speed; wall collision)
+			players[i].SpawnBulletCheck();	// check if bullet can spawn (detect key-press; clip size and fire rate control)
+		}
 
-		CollisionCheckPlayers();
+		CollisionCheckPlayers();			// player with player collisions
+		DrawPlayers();						// what do you think this does?
 
-		DrawPlayers();
-
-		/*
-		// drawing square and checks for position		// maybe edit checks; this code allows squares to exit screen by squareSize
-		// player 1
-		if (moveRight == true && square1X + squareSize < (canvas.width / 2 - squareSize))	// rem /2-squareSize to allow full screen movement
-			square1X += playerSpeed;
-		if (moveLeft == true && square1X > 0)
-			square1X -= playerSpeed;
-		if (moveUp == true && square1Y > 0)
-			square1Y -= playerSpeed;
-		if (moveDown == true && square1Y + squareSize < canvas.height)
-			square1Y += playerSpeed;
-
-		// player 2
-		if (moveRight2 == true && square2X + squareSize < canvas.width)
-			square2X += playerSpeed;
-		if (moveLeft2 == true && square2X > canvas.width / 2)		// change canvas.width/2 to 0 to allow full screen movement
-			square2X -= playerSpeed;
-		if (moveUp2 == true && square2Y > 0)
-			square2Y -= playerSpeed;
-		if (moveDown2 == true && square2Y + squareSize < canvas.height)
-			square2Y += playerSpeed;
-		*/
-
-		// TODO: check for collision between players
-
+		UpdateBullets();					// update bullet position; check for collisions
+		DrawBullets();
 		
 
-		/*
-		// drawing projectiles
-		// player 1 spawn projectile
-		if (shoot1 == true && shoot1Enabled == true)
-		{
-			shoot1Enabled = false;
-			spawnProjectile1();
-			setTimeout(function () { shoot1Enabled = true }, shootDelay);
-		}
-		// player 2 spawn projectile
-		if (shoot2 == true && shoot2Enabled == true)
-		{
-			shoot2Enabled = false;
-			spawnProjectile2();
-			setTimeout(function () { shoot2Enabled = true }, shootDelay);
-		}
 
-		// draw all projectiles (both players)
-		DrawProjectiles();
-
-		// player 1 update projectiles
-		for (var i = 0; i < projectiles1.length; i++)
-		{
-			projectiles1[i].x += projectileSpeed;
-
-			// check for projectile collision with borders
-			if (projectiles1[i].x < 0 || projectiles1[i].y < 0 || projectiles1[i].x + projectileSize > canvas.width || projectiles1[i].y + projectileSize > canvas.height)
-			{	// animate and then destroy projectile with splice
-
-				// call fn projectileExplosion() for animation; maybe gif? neon?
-
-				projectiles1.splice(i, 1);
-			}
-			else	//  check for projectile collision with players; only check if projectile still exists
-			{
-				// collision of projectiles1 with player 1
-				if (projectiles1[i].x + projectileSize > square1X && projectiles1[i].x < square1X + squareSize && projectiles1[i].y + projectileSize > square1Y && projectiles1[i].y < square1Y + squareSize)
-				{
-					//alert("boom1");
-					DamagePlayer1(projectileDamage);
-					// animate projectile
-					projectiles1.splice(i, 1);
-				}
-				else
-				{
-					// collision of projectiles1 with player 2 
-					if (projectiles1[i].x + projectileSize > square2X && projectiles1[i].x < square2X + squareSize && projectiles1[i].y + projectileSize > square2Y && projectiles1[i].y < square2Y + squareSize)
-					{
-						//alert("boom2");
-						DamagePlayer2(projectileDamage);
-						// animate projectile
-						projectiles1.splice(i, 1);
-					}
-				}
-			}
-
-			//console.log(projectiles1);
-		}
-
-		// player 2 update projectiles
-		for (var i = 0; i < projectiles2.length; i++)
-		{
-			projectiles2[i].x -= projectileSpeed;
-
-			// check for projectile collision with borders
-			if (projectiles2[i].x < 0 || projectiles2[i].y < 0 || projectiles2[i].x + projectileSize > canvas.width || projectiles2[i].y + projectileSize > canvas.height)
-			{	// animate and then destroy projectile with splice
-
-				// call fn projectileExplosion() for animation
-
-				projectiles2.splice(i, 1);
-			}
-			else	//  check for projectile collision with players; only check if projectile still exists
-			{
-				// collision of projectiles2 with player 1
-				if (projectiles2[i].x + projectileSize > square1X && projectiles2[i].x < square1X + squareSize && projectiles2[i].y + projectileSize > square1Y && projectiles2[i].y < square1Y + squareSize)
-				{
-					//alert("boo0m1");
-					DamagePlayer1(projectileDamage);
-					// animate projectile
-					projectiles2.splice(i, 1);
-				}
-				else
-				{
-					// collision of projectiles2 with player 2 
-					if (projectiles2[i].x + projectileSize > square2X && projectiles2[i].x < square2X + squareSize && projectiles2[i].y + projectileSize > square2Y && projectiles2[i].y < square2Y + squareSize)
-					{
-						//alert("boom2");
-						DamagePlayer2(projectileDamage);
-						// animate projectile
-						projectiles2.splice(i, 1);
-					}
-				}
-			}
-
-			//console.log(projectiles2);
-		}
-		// end drawing projectiles
-		*/
-
-		// debug text
-		//DrawDebugText("X: " + square1X.toFixed(2) + "   Y: " + square1Y.toFixed(2));
 
 
 		/*
@@ -712,7 +567,7 @@ window.onload = function ()
 		*/
 
 		//setInterval(draw, 10);
-		requestAnimationFrame(Draw);
+		requestAnimationFrame(Update);
 	}
 
 
