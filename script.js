@@ -930,11 +930,11 @@ window.onload = function ()
 			return false;
 	}
 
-	function DrawNeonText(text, x, y, font, color)
+	function DrawNeonText(text, x, y, font, color, shadowBlur = 20)
 	{
 		ctx.font = font;
 		ctx.shadowColor = color;
-		ctx.shadowBlur = 20;
+		ctx.shadowBlur = shadowBlur;
 		ctx.shadowOffsetX = x + 10000;
 		ctx.fillStyle ="#fff";
 		ctx.fillText(text, -10000, y);
@@ -1076,11 +1076,14 @@ window.onload = function ()
 				let colorSpacing = cw * 0.015;
 				let colorSize = cw * 0.017;
 				let colorX = x + cw * 0.02 + j * (colorSize + colorSpacing);
-				let colorY = y + cw * 0.06 + i * (colorSize + colorSpacing);
+				let colorY = y + cw * 0.08 + i * (colorSize + colorSpacing);
 
 				if (PointIsInside(mouseX, mouseY, colorX, colorY, colorSize, colorSize))
 				{ // mouse hover
-					DrawNeonRect(colorX, colorY, colorSize, colorSize, colors[i][j]);DrawNeonRect(colorX, colorY, colorSize, colorSize, colors[i][j]);
+					let sizeIncrease = 1.5;
+					let coordShift = colorSize * 0.5 / 2;
+					DrawNeonRect(colorX - coordShift, colorY - coordShift, colorSize*sizeIncrease, colorSize*sizeIncrease, colors[i][j]);
+					DrawNeonRect(colorX - coordShift, colorY - coordShift, colorSize*sizeIncrease, colorSize*sizeIncrease, colors[i][j]);
 				}
 				else
 				{ // normal mode
@@ -1093,10 +1096,41 @@ window.onload = function ()
 				}
 			}	
 		}
+
+		// draw keybindings
+		let fontSizeKeybind = cw * 0.015;
+		let count = 0;
+		for (let keybinding of Object.keys(players[playerCustomizationIndex].keybindings))
+		{ // draw keybindings text
+			let keybindingFont = "300 " + fontSizeKeybind + "px Open sans";
+			let text = keybinding.charAt(0).toUpperCase() + keybinding.slice(1) + ":";
+			let keybindSpacing = count * fontSizeKeybind * 1.7;
+			count++;
+			let keybindTextX = x + cw * 0.23;
+			let keybindTextY = y + cw * 0.08 + keybindSpacing;
+			
+			DrawNeonText(text, keybindTextX, keybindTextY, keybindingFont, "#999", 10);
+		}
+		for (let keybinding of Object.values(players[playerCustomizationIndex].keybindings))
+		{ // draw keybindings input fields
+			console.log(keybinding[0]);
+		}
 		
 
 	}
 	
+	function KeycodeToChar(keycode)
+	{
+		mapKeycodeToChar = {8:"Backspace",9:"Tab",13:"Enter",16:"Shift",17:"Ctrl",18:"Alt",19:"Pause/Break",20:"Caps Lock",27:"Esc",32:"Space",33:"Page Up",34:"Page Down",35:"End",36:"Home",37:"Left",38:"Up",39:"Right",40:"Down",45:"Insert",46:"Delete",48:"0",49:"1",50:"2",51:"3",52:"4",53:"5",54:"6",55:"7",56:"8",57:"9",65:"A",66:"B",67:"C",68:"D",69:"E",70:"F",71:"G",72:"H",73:"I",74:"J",75:"K",76:"L",77:"M",78:"N",79:"O",80:"P",81:"Q",82:"R",83:"S",84:"T",85:"U",86:"V",87:"W",88:"X",89:"Y",90:"Z",91:"Windows",93:"Right Click",96:"Numpad 0",97:"Numpad 1",98:"Numpad 2",99:"Numpad 3",100:"Numpad 4",101:"Numpad 5",102:"Numpad 6",103:"Numpad 7",104:"Numpad 8",105:"Numpad 9",106:"Numpad *",107:"Numpad +",109:"Numpad -",110:"Numpad .",111:"Numpad /",112:"F1",113:"F2",114:"F3",115:"F4",116:"F5",117:"F6",118:"F7",119:"F8",120:"F9",121:"F10",122:"F11",123:"F12",144:"Num Lock",145:"Scroll Lock",182:"My Computer",183:"My Calculator",186:";",187:"=",188:",",189:"-",190:".",191:"/",192:"`",219:"[",220:"\\",221:"]",222:"'"};
+		
+		let result = mapKeycodeToChar[keycode];
+		if (result != null || result != undefined)
+			return result;
+		else
+			return null;
+	}
+
+
 	function MenuUpdate()
 	{
 		// draw default players and settings (or read from file)
@@ -1125,11 +1159,6 @@ window.onload = function ()
 		
 	}
 
-	ctx.beginPath();
-	ctx.rect(100, 100, 100, 100);
-	ctx.fillStyle = "#f0f";
-	ctx.fill();
-	ctx.closePath();
 
 
 
