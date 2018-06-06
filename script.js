@@ -143,7 +143,7 @@ window.onload = function ()
 		SpawnBulletCheck()
 		{
 			// TODO: dont spawn if too close to a player; damage?
-			if (this.keybindings.shoot[1] && this.clipAmmo > 0 && this.canShoot)
+			if (this.keybindings.shoot[1] && this.clipAmmo > 0 && this.canShoot && !endgame)
 			{
 				// disable shooting based on fire rate
 				this.canShoot = false;
@@ -251,6 +251,7 @@ window.onload = function ()
 		mouseUpX = null;						// x position where last click was detected
 		mouseUpY = null;						// y position where last click was detected
 		scoresHeight = cw * 0.03;				// width of score panel; global because players should colide with it
+		winnerPlayer = null;					// number of player in players[] who won last game (not saved in next game; used for scores highlight)
 
 		// main menu
 		playerCustomizationIndex = null;		// index of player who is beeing customized in customization dialog; if !null dialog exists
@@ -503,12 +504,19 @@ window.onload = function ()
 
 	function CollisionCheckPlayers()
 	{ // player with player collision check
+
 		let collisions = [];	// array that holds all collisions as objects with information on who collided with who and where
 		
 		for (let i = 0; i < players.length; i++)
 		{ // check every player ...
+			if (players[i].health <= 0)
+				continue;	// don't check for player that has no health
+			
 			for (let j = 0; j < players.length; j++)
 			{ // ... with every other player ...
+				if (players[j].health <= 0)
+					continue;	// don't check against player that has no health
+				
 				if (j == i)
 				{ // ... don't check a player with itself
 					continue;
@@ -960,12 +968,14 @@ window.onload = function ()
 
 			if (alivePlayers == 1)	// 1
 			{ // 1 winner
-				players[alivePlayerIndex].score++;	
+				setTimeout(function () { winnerPlayer = alivePlayerIndex; }, 2000);
+				setTimeout(function () { players[alivePlayerIndex].score++ }, 2000);
+				setTimeout(function () { winnerPlayer = null; }, 4000);
 			}
 
 			endgame = true;
 			FreezeGame();
-			setTimeout(RestartGame, 3000);
+			setTimeout(RestartGame, 4000);
 
 			// announce
 			/*
@@ -1029,6 +1039,9 @@ window.onload = function ()
 			let font = "300 " + cw * 0.015 + "px Open sans";
 			ctx.textAlign = "center";
 			DrawNeonText(text, x, y, font, players[i].color, 10);
+
+			if (i == winnerPlayer)
+				DrawNeonText(text, x, y, font, players[i].color, 20);
 		}
 	}
 
@@ -1038,11 +1051,14 @@ window.onload = function ()
 
 		for (let i = 0; i < players.length; i++)
 		{
+			if (players[i].health <= 0)
+				continue;
+			
 			players[i].MoveCheck();			// check if player can move (detect key-press; control player speed; wall collision)
 			players[i].SpawnBulletCheck();	// check if bullet can spawn (detect key-press; clip size and fire rate control)
 
 			// recharge bullets
-		if (players[i].clipAmmo < players[i].clipSize && new Date().getTime() >= players[i].ammoRechargeDate && !endgame)
+			if (players[i].clipAmmo < players[i].clipSize && new Date().getTime() >= players[i].ammoRechargeDate && !endgame)
 			{
 				players[i].clipAmmo++;
 				players[i].ammoRechargeDate = new Date().getTime() + players[i].rechargeDelay;
