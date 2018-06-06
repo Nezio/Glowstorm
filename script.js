@@ -33,6 +33,7 @@ window.onload = function ()
 			this.x = x;										// x and y are middle of player hitbox
 			this.y = y;
 			this.color = color;
+			this.strokeColor = "#fff";						// inside stroke color for neon rect
 			this.health = 100;
 			this.size = cw * 0.023;
 			this.maxSpeed = cw * 0.005;						// default 0.004 or 0.005
@@ -42,6 +43,7 @@ window.onload = function ()
 			this.velX = 0;									// velocity, a vector, incudes direction AND speed
 			this.velY = 0;
 			this.clipSize = 5;
+			this.maxClipSize = 7;
 			this.clipAmmo = this.clipSize;
 			this.canShoot = true;
 			this.fireRateDelay = 500;						// fire rate delay in milliseconds; default 500
@@ -212,6 +214,19 @@ window.onload = function ()
 		}
 	}
 
+	class Powerup
+	{
+		constructor(x, y, type, image, duration = 0)
+		{
+			this.x = x;							// x and y are middle of powerup hitbox
+			this.y = y;
+			this.type = type;
+			this.image = image;
+			this.duration = duration;			// if duration is 0, powerup doesn't time out
+			this.size = cw * 0.017;
+		}
+	}
+
 	// main logic #####################################################################################################
 	main();
 	function main()
@@ -253,7 +268,13 @@ window.onload = function ()
 		scoresHeight = cw * 0.03;				// width of score panel; global because players should colide with it
 		winnerPlayer = null;					// number of player in players[] who won last game (not saved in next game; used for scores highlight)
 		gamePaused = false;						// is game paused?; used for drawing pause dialog
-		playersStatesOnPause = [];				// saved states of players when pause was pressed; restore to players on unpause 
+		playersStatesOnPause = [];				// saved states of players when pause was pressed; restore to players on unpause
+		powerups = [];							// array of spawned powerups
+		maxPowerups = 10;						// maximum number of powerups that can be on screen
+		powerupsInitDelay = 1000;				// delay before powerups begin spawning (in ms)
+		powerupsSpawnDelay = 10000;				// delay before next powerup spawns (in ms)
+		powerupsMinDelay = 5000;				// minimum delay before next powerup spawns (in ms)
+		powerupsUpdateStarted = false;
 
 		// main menu
 		playerCustomizationIndex = null;		// index of player who is beeing customized in customization dialog; if !null dialog exists
@@ -671,7 +692,7 @@ window.onload = function ()
 				continue;
 			
 			// player body
-			DrawNeonRect(players[i].x - players[i].size / 2, players[i].y - players[i].size / 2, players[i].size, players[i].size, players[i].color);
+			DrawNeonRect(players[i].x - players[i].size / 2, players[i].y - players[i].size / 2, players[i].size, players[i].size, players[i].color, players[i].strokeColor);
 		}
 
 		for (let i = 0; i < players.length; i++)
@@ -755,7 +776,7 @@ window.onload = function ()
 			ctx.fill();	
 	}
 	
-	function DrawNeonRect(x, y, w, h, color)
+	function DrawNeonRect(x, y, w, h, color, strokeColor = "#fff")
 	{
 		ctx.globalCompositeOperation = "lighter";
 
@@ -773,7 +794,7 @@ window.onload = function ()
 		DrawRectangle(x, y, w, h, 1);
 		ctx.lineWidth=3;
 		DrawRectangle(x, y, w, h, 1);
-		ctx.strokeStyle = "#fff";
+		ctx.strokeStyle = strokeColor;
 		ctx.lineWidth=1.5;
 		DrawRectangle(x, y, w, h, 1);
 		
@@ -934,9 +955,10 @@ window.onload = function ()
 					{
 						DamagePlayer(k, b.damage);
 
-						players[i].bullets[j].x = collisionResult.x;
-						players[i].bullets[j].y = collisionResult.y;
-						DrawBullets();
+						// draw last bullet at point of impact (incorrect draw when players are next to eachother; doesn't work with high bullet speed)
+						//players[i].bullets[j].x = collisionResult.x;
+						//players[i].bullets[j].y = collisionResult.y;
+						//DrawBullets();
 
 						players[i].bullets.splice(j, 1);
 						j--;
@@ -953,6 +975,17 @@ window.onload = function ()
 		players[playerIndex].health -= damage;
 		if (players[playerIndex].health < 0)
 			players[playerIndex].health = 0;
+		
+		let oldColor = players[playerIndex].color;
+		let oldStrokeColor = players[playerIndex].strokeColor;
+		setTimeout(function () { players[playerIndex].color = oldColor; players[playerIndex].strokeColor = oldStrokeColor; }, 50);
+		let hsv = hexToHsv(players[playerIndex].color);
+		hsv.s = hsv.s * 0.75;
+		hsv.v = hsv.v * 0.5;
+		let color = hsvToHex(hsv.h, hsv.s, hsv.v);
+		let strokeColor = "#555";
+		players[playerIndex].color = color;
+		players[playerIndex].strokeColor = strokeColor;
 	}
 
 	function PauseGame()
@@ -1060,8 +1093,6 @@ window.onload = function ()
 
 	function endGameCheck()
 	{
-		// TODO: announce win (no dialog? animate?) and continue after x seconds; increment player score counter
-
 		let alivePlayers = 0;
 		let alivePlayerIndex;
 		for (let i = 0; i < players.length; i++)
@@ -1206,6 +1237,80 @@ window.onload = function ()
 
 	}
 
+	function powerupsUpdate()
+	{
+		// WIP; TODO:
+		// create powerup class with x, y, type, image, size, duration (for timed powerups)...?
+		// if maximum number of spawned powerups isn't exceeded
+			// create and add powerup to powerups array; rand choose from array of powerup types, rand coord within limits
+		// create function to draw powerups
+		// add player with powerup collision check and call function to apply powerup to player that picked it up
+			// check how it works if two players get same powerup at the same time
+			// include timed powerups (maybe like dim defeated is done)
+		
+		let powerup = new Powerup(cw / 2, ch / 2, "clipSize", assets.images.ico_customizationNormal, 0);
+		powerups.push(powerup);
+
+		// set time forn next powerup spawn
+		powerupsSpawnDelay -= 1000;
+		if (powerupsSpawnDelay < powerupsMinDelay)
+			powerupsSpawnDelay = powerupsMinDelay;	
+		
+		//setTimeout(powerupsUpdate, powerupsSpawnDelay);
+	}
+
+	function DrawPowerups()
+	{
+		for (let i = 0; i < powerups.length; i++)
+		{
+			ctx.shadowColor = "#aaa";
+			ctx.shadowBlur = 10;
+			let x = powerups[i].x - powerups[i].size / 2;
+			let y = powerups[i].y - powerups[i].size / 2;
+			ctx.drawImage(powerups[i].image, x, y, powerups[i].size, powerups[i].size);
+			ctx.shadowBlur = 0;
+		}
+	}
+
+	function CollisionCheckPowerups()
+	{
+		for (let i = 0; i < players.length; i++)
+		{ // go through all players, and for every player...
+			for (let j = 0; j < powerups.length; j++)
+			{ // ... go through every powerup
+				let collisionResult = CollisionCheckOutside(players[i].x, players[i].y, players[i].size, players[i].size, powerups[j].x, powerups[j].y, powerups[j].size, powerups[j].size);
+				if (collisionResult.x != null)
+				{ // collision detected
+					ApplyPowerup(i, powerups[j].type, powerups[j].duration);
+
+					// remove picked up powerup
+					powerups.splice(j, 1);
+					j--;
+				}
+			}
+		}
+
+	}
+
+	// WIP2
+	function ApplyPowerup(player, type, duration)
+	{ // apply powerup of given type and duration to the player
+		switch (type)
+		{
+			case "clipSize":
+			{
+				if (players[player].clipSize < players[player].maxClipSize)
+					players[player].clipSize++;
+					
+				break;	
+			}
+			default:
+			{
+				break;
+			}	
+		}
+	}
+
 	function Update()
 	{
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1234,6 +1339,16 @@ window.onload = function ()
 
 		DrawScores();
 
+		// start powerups spawning
+		if (!powerupsUpdateStarted)
+		{
+			powerupsUpdateStarted = true;
+			setTimeout(powerupsUpdate, powerupsInitDelay);
+		}
+
+		DrawPowerups();
+		CollisionCheckPowerups();			// players with powerups collision check
+			
 
 		
 
@@ -1679,7 +1794,7 @@ window.onload = function ()
 		let font = "300 " + cw * 0.04 + "px Open sans";
 		ctx.textAlign = "center";
 		DrawNeonText("NEON SQUARE BATTLES", cw / 2, cw * 0.07, font, "#15f");
-		DrawNeonText("NEON SQUARE BATTLES", cw / 2 + cw*0.0035, cw * 0.07, font, "#15f", 500);
+		DrawNeonText("NEON SQUARE BATTLES", cw / 2 + cw * 0.0037, cw * 0.07, font, "#15f", 0);
 		ctx.textAlign = "left";
 		
 
