@@ -17,51 +17,114 @@ window.onload = function ()
 		canvas.width = window.innerWidth;
 		canvas.height = window.innerHeight;
 
-		// update variables
+		// update some variables; recalculate x and y
 	}
 
-	// main logic #####################################################################################################
-	
-	// call main draw fn which repeats itself every tick with requestAnimationFrame
-	Variables();
-	Draw();
+	// classes ########################################################################################################
+	class Player
+	{
+		constructor(x = 0, y = 0, color = "#f0f", keybindings = {})
+		{
+			this.x = x;				// cw * 0.08;
+			this.y = y;				//canvas.height / 2 - squareSize / 2;
+			this.color = color;		//"#0055cc";
+			this.health = 100;
+			this.size = cw * 0.023;		// x = 0.023 ~= 30px * 0.0008
+			this.speed = cw * 0.004;
 
+			this.keybindings =
+			{
+				// key: keybind code, state
+				up: [keybindings.up, false],
+				down: [keybindings.down, false],
+				left: [keybindings.left, false],
+				right: [keybindings.right, false]
+			};
+
+		}
+
+		MoveCheck()
+		{
+			if(this.keybindings.up[1])
+			{
+				this.y -= this.speed;
+			}
+			if(this.keybindings.down[1])
+			{
+				this.y += this.speed;
+			}
+			if(this.keybindings.left[1])
+			{
+				this.x -= this.speed;
+			}
+			if(this.keybindings.right[1])
+			{
+				this.x += this.speed;
+			}
+		}
+
+
+	}	
+
+	// main logic #####################################################################################################
+	main();
+	function main()
+	{
+		// initialize some variables
+		Variables();
+
+		// initialize players
+		players = [];
+		let keybindings =
+		{
+			up: 87,
+			down: 83,
+			left: 65,
+			right: 68
+		}	
+		let player = new Player(cw * 0.08, canvas.height / 2, "#0055cc", keybindings);
+		players.push(player);
+		keybindings =
+		{
+			up: 38,
+			down: 40,
+			left: 37,
+			right: 39
+		}	
+		player = new Player(cw - (cw * 0.08), canvas.height / 2, "#cc1100", keybindings);
+		players.push(player);
+		
+		
+		Draw();		// main draw fn which repeats itself every tick with requestAnimationFrame
+	}
 
 	// functions #####################################################################################################
 	function Variables()	// initialize and update
 	{
 		// general
-		cw = canvas.width;			// magic constant is 0.0008; for cw * x, x = pixel_value * 0.0008
-		squareSize = cw * 0.023;	// x = 0.023 ~= 30 * 0.0008
-		playerSpeed = cw * 0.004;
+		cw = canvas.width;			// magic constant for converstion from pixels to multiples of canvas width is 0.0008; for cw * x, x = pixel_value * 0.0008
+		numberOfPlayers = 2;
 		projectileSize = cw * 0.008;
-		shootDelay = 500;								// in miliseconds; original : 1000
-		projectileOffsetFromSquare = cw * 0.008;
+		shootDelay = 500;							// in miliseconds; original : 1000			; player property?
+		projectileOffsetFromSquare = cw * 0.008;	// ; player property?
+
 		projectileSpeed = cw * 0.008;
 		projectileDamage = 10;
+
 		endgame = false;
 		restartKey = false;
 
-		// players should be objects; players[0] = createPlayer(X, Y, Color);
 		// player 1
 			// player
-			square1X = cw * 0.08;
-			square1Y = canvas.height / 2 - squareSize / 2;
-			player1Health = 100;
-			player1Color = "#0055cc";
-
-			// movement
-			moveRight = false;
-			moveLeft = false;
-			moveUp = false;
-			moveDown = false;
+			
 
 			// projectile
 			shoot1 = false;
 			shoot1Enabled = true;
 			projectiles1 = [];
 
-		// player 2
+		/*
+			// player 2
 			// player
 			square2X = cw - (cw * 0.08) - squareSize;
 			square2Y = canvas.height / 2 - squareSize / 2;
@@ -78,6 +141,7 @@ window.onload = function ()
 			shoot2 = false;
 			shoot2Enabled = true;
 			projectiles2 = [];
+			*/
 	}
 
 	function KeyDownHandler(e)
@@ -88,76 +152,28 @@ window.onload = function ()
 			restartKey = true;
 		}
 
-		// player 1
-			// d
-			if (e.keyCode == 68)
-				moveRight = true;
-			// a
-			if (e.keyCode == 65)
-				moveLeft = true;
-			// w
-			if (e.keyCode == 87)
-				moveUp = true;
-			// s
-			if (e.keyCode == 83)
-				moveDown = true;
-			// space
-			if (e.keyCode == 32)
-				shoot1 = true;
+		for (let i = 0; i < numberOfPlayers; i++)
+		{
+			for (let keybinding of Object.values(players[i].keybindings))
+			{
+				if (e.keyCode == keybinding[0])
+					keybinding[1] = true;
+			}
+		}
 
-		// player 2
-			// Arrow right
-			if (e.keyCode == 39)
-				moveRight2 = true;
-			// Arrow left
-			if (e.keyCode == 37)
-				moveLeft2 = true;
-			// Arrow up
-			if (e.keyCode == 38)
-				moveUp2 = true;
-			// Arrow down
-			if (e.keyCode == 40)
-				moveDown2 = true;
-			// Numpad 3
-			if (e.keyCode == 99)
-				shoot2 = true;
 	}
 
 	function KeyUpHandler(e)
 	{
-		// player 1
-			// d
-			if (e.keyCode == 68)
-				moveRight = false;
-			// a
-			if (e.keyCode == 65)
-				moveLeft = false;
-			// w
-			if (e.keyCode == 87)
-				moveUp = false;
-			// s
-			if (e.keyCode == 83)
-				moveDown = false;
-			// space
-			if (e.keyCode == 32)
-				shoot1 = false;
+		for (let i = 0; i < numberOfPlayers; i++)
+		{
+			for (let keybinding of Object.values(players[i].keybindings))
+			{
+				if (e.keyCode == keybinding[0])
+					keybinding[1] = false;
+			}
+		}
 
-		// player 2
-			// Arrow right
-			if (e.keyCode == 39)
-				moveRight2 = false;
-			// Arrow left
-			if (e.keyCode == 37)
-				moveLeft2 = false;
-			// Arrow up
-			if (e.keyCode == 38)
-				moveUp2 = false;
-			// Arrow down
-			if (e.keyCode == 40)
-				moveDown2 = false;
-			// Numpad 3
-			if (e.keyCode == 99)
-				shoot2 = false;
 	}
 
 	function DrawDebugText(text)
@@ -167,23 +183,19 @@ window.onload = function ()
 		ctx.fillText(text, 10, 20);
 	}
 
-	function DrawSquares()
+	function DrawPlayers()
 	{
-		// player 1
-		ctx.beginPath();
-		ctx.rect(square1X, square1Y, squareSize, squareSize);
-		ctx.fillStyle = player1Color;
-		ctx.fill();
-		ctx.closePath();
-
-		// player 2
-		ctx.beginPath();
-		ctx.rect(square2X, square2Y, squareSize, squareSize);
-		ctx.fillStyle = player2Color;
-		ctx.fill();
-		ctx.closePath();
+		for (let i = 0; i < numberOfPlayers; i++)
+		{
+			ctx.beginPath();
+			ctx.rect(players[i].x - players[i].size / 2, players[i].y - players[i].size / 2, players[i].size, players[i].size);
+			ctx.fillStyle = players[i].color;
+			ctx.fill();
+			ctx.closePath();
+		}	
 
 		
+		/*
 		// player 1 health text
 		ctx.font = "12px Arial";
 		ctx.fillStyle = "#eee";
@@ -222,7 +234,7 @@ window.onload = function ()
 		ctx.fillStyle = "#00ff33";
 		ctx.fill();
 		ctx.closePath();
-
+		*/
 
 	}
 
@@ -316,21 +328,22 @@ window.onload = function ()
 		shoot2Enabled = false;
 	}
 
-
 	function Draw()
 	{
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-		/*// background		// moved to css
-		ctx.beginPath();
-		ctx.rect(0, 0, canvas.width, canvas.height);
-		ctx.fillStyle = "#222";
-		ctx.fill();
-		ctx.closePath();*/
+		for (let i = 0; i < numberOfPlayers; i++)
+		{
+			players[i].MoveCheck();
+		}	
 
+		DrawPlayers();
+
+		
+		/*
 		// drawing square and checks for position		// maybe edit checks; this code allows squares to exit screen by squareSize
 		// player 1
-		if (moveRight == true && square1X + squareSize < (canvas.width /*/ 2 - squareSize*/))	// rem /2-squareSize to allow full screen movement
+		if (moveRight == true && square1X + squareSize < (canvas.width / 2 - squareSize))	// rem /2-squareSize to allow full screen movement
 			square1X += playerSpeed;
 		if (moveLeft == true && square1X > 0)
 			square1X -= playerSpeed;
@@ -348,12 +361,13 @@ window.onload = function ()
 			square2Y -= playerSpeed;
 		if (moveDown2 == true && square2Y + squareSize < canvas.height)
 			square2Y += playerSpeed;
-		
+		*/
+
 		// TODO: check for collision between players
 
-		DrawSquares();
+		
 
-
+		/*
 		// drawing projectiles
 		// player 1 spawn projectile
 		if (shoot1 == true && shoot1Enabled == true)
@@ -451,13 +465,13 @@ window.onload = function ()
 			//console.log(projectiles2);
 		}
 		// end drawing projectiles
-
+		*/
 
 		// debug text
 		//DrawDebugText("X: " + square1X.toFixed(2) + "   Y: " + square1Y.toFixed(2));
 
 
-
+		/*
 		// check for endgame
 		if (player1Health <= 0)
 		{
@@ -501,7 +515,7 @@ window.onload = function ()
 		{
 			location.reload();
 		}
-
+		*/
 
 		//setInterval(draw, 10);
 		requestAnimationFrame(Draw);
