@@ -48,6 +48,13 @@ window.onload = function ()
 
 		}
 
+		SpawnBulletCheck()
+		{
+			// TODO: move below MoveCheck() when done
+
+
+		}
+
 		MoveCheck()
 		{
 			let isMoving = false;
@@ -73,21 +80,19 @@ window.onload = function ()
 					this.velX += this.acceleration;
 				}
 			}
-			//else
-			//{
-				// slow down gradually
-				this.velX -= this.decceleration * Math.sign(this.velX);
-				this.velY -= this.decceleration * Math.sign(this.velY);
-
-				// eliminate jumping around 0; fixed value of acceleration can't reduce it to 0
-				if (Math.abs(this.velX) < this.decceleration)
-					this.velX = 0;
-				if (Math.abs(this.velY) < this.decceleration)
-					this.velY = 0;
-			//}
 			
-			let maxVelocity = this.maxSpeed;
+			// slow down gradually
+			this.velX -= this.decceleration * Math.sign(this.velX);
+			this.velY -= this.decceleration * Math.sign(this.velY);
+
+			// eliminate jumping around 0; fixed value of acceleration can't reduce it to 0
+			if (Math.abs(this.velX) < this.decceleration)
+				this.velX = 0;
+			if (Math.abs(this.velY) < this.decceleration)
+				this.velY = 0;
+			
 			// check for diagonal movement and reduce speed
+			let maxVelocity = this.maxSpeed;
 			if
 			(
 				(this.keybindings.up[1] && this.keybindings.left[1]) ||
@@ -120,8 +125,11 @@ window.onload = function ()
 				this.x = collisionResult.x;
 				this.y = collisionResult.y;
 			}
-			
+
+			// collsion check with other players is defined as separate function(s)
 		}
+
+
 
 
 	}	
@@ -153,8 +161,17 @@ window.onload = function ()
 		}	
 		player = new Player(cw - (cw * 0.08), canvas.height / 2, "#cc1100", keybindings);
 		players.push(player);
+		/*keybindings =
+		{
+			up: 73,
+			down: 75,
+			left: 74,
+			right: 76
+		}	
+		player = new Player(cw / 2, canvas.height / 2, "#00ff22", keybindings);
+		players.push(player);*/
 		
-		
+		SpawnBulletTimer();
 		Draw();		// main draw fn which repeats itself every tick with requestAnimationFrame
 	}
 
@@ -184,20 +201,9 @@ window.onload = function ()
 			projectiles1 = [];
 
 		/*
-			// player 2
-			// player
-			square2X = cw - (cw * 0.08) - squareSize;
-			square2Y = canvas.height / 2 - squareSize / 2;
-			player2Health = 100;
-			player2Color = "#cc1100";
+			
 
-			// movement
-			moveRight2 = false;
-			moveLeft2 = false;
-			moveUp2 = false;
-			moveDown2 = false;
-
-			// projectile
+			// projectile for P2
 			shoot2 = false;
 			shoot2Enabled = true;
 			projectiles2 = [];
@@ -212,6 +218,7 @@ window.onload = function ()
 			restartKey = true;
 		}
 
+		// players keybindings
 		for (let i = 0; i < numberOfPlayers; i++)
 		{
 			for (let keybinding of Object.values(players[i].keybindings))
@@ -220,11 +227,11 @@ window.onload = function ()
 					keybinding[1] = true;
 			}
 		}
-
 	}
 
 	function KeyUpHandler(e)
 	{
+		// players keybindings
 		for (let i = 0; i < numberOfPlayers; i++)
 		{
 			for (let keybinding of Object.values(players[i].keybindings))
@@ -236,41 +243,43 @@ window.onload = function ()
 
 	}
 	
-	function CollisionCheck()
-	{
-		// player with player collision check
+	function CollisionCheckPlayers()
+	{ // player with player collision check
+		let collisions = [];	// array that holds all collisions as objects with information on who collided with who and where
+		
 		for (let i = 0; i < players.length; i++)
-		{
-
+		{ // check every player ...
 			for (let j = 0; j < players.length; j++)
-			{
+			{ // ... with every other player ...
 				if (j == i)
-				{
+				{ // ... don't check a player with itself
 					continue;
 				}	
 				else
-				{
+				{ // detect collisions and push objects
 					let collisionResult = CollisionCheckOutside(players[i].x, players[i].y, players[i].size, players[i].size, players[j].x, players[j].y, players[j].size, players[j].size);
 					if (collisionResult.x != null)
 					{
-						players[i].x = collisionResult.x;
-						players[i].y = collisionResult.y;
+						let collisionResult2 = CollisionCheckOutside(players[j].x, players[j].y, players[j].size, players[j].size, players[i].x, players[i].y, players[i].size, players[i].size);
+						collisions.push({ cResult1: collisionResult, cResult2: collisionResult2, player1: i, player2: j });
 					}
 				}
 			}
-
 		}
-		
 
-		let collisionResult = CollisionCheckOutside(players[0].x, players[0].y, players[0].size, players[0].size, players[1].x, players[1].y, players[1].size, players[1].size);
-		console.log(collisionResult);
+		for (let c of collisions)
+		{ // set coords and velocities of players involved in collisions so they don't collide
+			players[c.player1].x = c.cResult1.x;
+			players[c.player1].y = c.cResult1.y;
+			players[c.player2].x = c.cResult2.x;
+			players[c.player2].y = c.cResult2.y;
 
-		ctx.beginPath();
-		ctx.rect(collisionResult.x, collisionResult.y, 3, 3);
-		ctx.fillStyle = "#f0f";
-		ctx.fill();
-		ctx.closePath();
-		
+			players[c.player1].velX = 0;
+			players[c.player1].velY = 0;
+			players[c.player2].velX = 0;
+			players[c.player2].velY = 0;
+			
+		}
 	}
 
 	function CollisionCheckInside(x1, y1, w1, h1, x2, y2, w2, h2)
@@ -306,50 +315,58 @@ window.onload = function ()
 	{ // check if box1 is outside of box2; don't allow clipping through box2; coordinates assume center of boxes
 		let newX = null;
 		let newY = null;
+		let edgeDiff;	// for detecting on which edge collision happened > it will be the edge that has lowest edgeDiff value
+		let d_up = Math.abs(Math.abs(y1 - h1 / 2) - Math.abs(y2 + h2 / 2));	 // space between box1 top and box2 bottom
+		let d_down = Math.abs(Math.abs(y1 + h1 / 2) - Math.abs(y2 - h2 / 2));	// etc.
+		let d_left = Math.abs(Math.abs(x1 - w1 / 2) - Math.abs(x2 + w2 / 2));
+		let d_right = Math.abs(Math.abs(x1 + w1 / 2) - Math.abs(x2 - w2 / 2));
 
-		/*if ((y1 - h1 / 2 < y2 + h2 / 2) && (y1 - h1 / 2 > y2 - h2 / 2))
+		if ((y1 - h1 / 2 < y2 + h2 / 2))
 		{ // up
+			edgeDiff = d_up;
 			newX = x1;
 			newY = y2 + h2 / 2 + h1 / 2;
 		}
-		if ((y1 + h1 / 2 > y2 - h2 / 2) && (y1 + h1 / 2 < y2 + h2 / 2))
+		if ((y1 + h1 / 2 > y2 - h2 / 2))
 		{ // down
-			newX = x1;
-			newY = y2 + h2 / 2 - h1 / 2;
+			if (d_down < edgeDiff)
+			{
+				edgeDiff = d_down;
+				newX = x1;
+				newY = y2 - h2 / 2 - h1 / 2;
+			}			
 		}
-		if ((x1 - w1 / 2 < x2 + w2 / 2) && (x1 - w1 / 2 > x2 - w2 / 2))
+		if ((x1 - w1 / 2 < x2 + w2 / 2))
 		{ // left
-			newX = x2 + w2 / 2 + w1 / 2;
-			newY = y1;
+			if (d_left < edgeDiff)
+			{
+				edgeDiff = d_left;
+				newX = x2 + w2 / 2 + w1 / 2;
+				newY = y1;
+			}
 		}
-		if ((x1 + w1 / 2 > x2 - w2 / 2) && (x1 + w1 / 2 < x2 + w2 / 2))
+		if ((x1 + w1 / 2 > x2 - w2 / 2))
 		{ // right
-			newX = x2 - w2 / 2 - w1 / 2;
-			newY = y1;
-		}*/
-
-		if ((y1 - h1 / 2 < y2 + h2 / 2) && (y1 - h1 / 2 > y2 - h2 / 2) && (((x1 - w1 / 2 < x2 + w2 / 2) && (x1 - w1 / 2 > x2 - w2 / 2)) || ((x1 + w1 / 2 > x2 - w2 / 2) && (x1 + w1 / 2 < x2 + w2 / 2))))
-		{ // up
-			newX = x1;
-			newY = y2 + h2 / 2 + h1 / 2;
-		}
-		if ((y1 + h1 / 2 > y2 - h2 / 2) && (y1 + h1 / 2 < y2 + h2 / 2) && (((x1 - w1 / 2 < x2 + w2 / 2) && (x1 - w1 / 2 > x2 - w2 / 2)) || ((x1 + w1 / 2 > x2 - w2 / 2) && (x1 + w1 / 2 < x2 + w2 / 2))))
-		{ // down
-			newX = x1;
-			newY = y2 + h2 / 2 - h1 / 2;
-		}
-		if ((x1 - w1 / 2 < x2 + w2 / 2) && (x1 - w1 / 2 > x2 - w2 / 2) && (((y1 - h1 / 2 < y2 + h2 / 2) && (y1 - h1 / 2 > y2 - h2 / 2)) || ((y1 + h1 / 2 > y2 - h2 / 2) && (y1 + h1 / 2 < y2 + h2 / 2))))
-		{ // left
-			newX = x2 + w2 / 2 + w1 / 2;
-			newY = y1;
-		}
-		if ((x1 + w1 / 2 > x2 - w2 / 2) && (x1 + w1 / 2 < x2 + w2 / 2) && (((y1 - h1 / 2 < y2 + h2 / 2) && (y1 - h1 / 2 > y2 - h2 / 2)) || ((y1 + h1 / 2 > y2 - h2 / 2) && (y1 + h1 / 2 < y2 + h2 / 2))))
-		{ // right
-			newX = x2 - w2 / 2 - w1 / 2;
-			newY = y1;
+			if (d_right < edgeDiff)
+			{
+				edgeDiff = d_right;
+				newX = x2 - w2 / 2 - w1 / 2;
+				newY = y1;
+			}
 		}
 
+		if (!((y1 - h1 / 2 < y2 + h2 / 2) && (y1 + h1 / 2 > y2 - h2 / 2) && (x1 - w1 / 2 < x2 + w2 / 2) && (x1 + w1 / 2 > x2 - w2 / 2)))
+		{ // all; no collision
+			newX = null;
+			newY = null;
+		}
+		
 		return ({ x: newX, y: newY });
+	}
+
+	SpawnBulletTimer()
+	{
+		// ? set different fire rates for players
 	}
 
 	function DrawDebugText(text)
@@ -513,7 +530,7 @@ window.onload = function ()
 			players[i].MoveCheck();
 		}	
 
-		CollisionCheck();
+		CollisionCheckPlayers();
 
 		DrawPlayers();
 
