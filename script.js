@@ -24,9 +24,6 @@ window.onload = function ()
 		// update some variables; recalculate x and y
 	}
 
-	// better neon glow
-	ctx.globalCompositeOperation = "lighter";
-
 	// classes ########################################################################################################
 	class Player
 	{
@@ -286,7 +283,9 @@ window.onload = function ()
 
 		// main menu
 		editingNameIndex = null;		// index of player whose name is beeing edited
+		playerCustomizationIndex = null;		// index of player whose color is beeing edited
 		upperCase = false;				// is shift pressed?
+		//TODO?: if there is dialog on screen disable other buttons
 	}
 
 	// TODO: text in FF; keyCode depricated?; test all in other  browsers	
@@ -307,36 +306,54 @@ window.onload = function ()
 					keybinding[1] = true;
 			}
 		}
+
+		// customization dialog
+		if (playerCustomizationIndex != null && editingNameIndex == null)
+		{
+			// esc or enter
+			if (e.keyCode == 27 || e.keyCode == 13)
+				playerCustomizationIndex = null;
+		}
 		
 		// name edit
+		let maxNameLength = 10;
 		if (editingNameIndex != null)
 		{
-			// only letters and numbers
-			for (let i = 48; i <= 90; i++)
+			if (players[editingNameIndex].name.length < maxNameLength)
 			{
-				if (i == e.keyCode)
+				// only letters and numbers...
+				for (let i = 48; i <= 90; i++)
 				{
-					if (upperCase)
-						players[editingNameIndex].name += String.fromCharCode(e.keyCode);
-					else
-						players[editingNameIndex].name += String.fromCharCode(e.keyCode).toLocaleLowerCase();
-				}	
-			}
-
+					if (i == e.keyCode)
+					{
+						if (upperCase)
+							players[editingNameIndex].name += String.fromCharCode(e.keyCode);
+						else
+							players[editingNameIndex].name += String.fromCharCode(e.keyCode).toLocaleLowerCase();
+					}	
+				}
+				
+				// ...and space
+				if (e.keyCode == 32)
+					players[editingNameIndex].name += String.fromCharCode(e.keyCode);
+			}	
+			
 			// backspace
 			if (e.keyCode == 8)
 				players[editingNameIndex].name = players[editingNameIndex].name.slice(0, -1);
 			
 			// esc or enter
 			if (e.keyCode == 27 || e.keyCode == 13)
-				editingNameIndex = null;	
+				editingNameIndex = null;
 		}
+
+		
 
 		// upper case; is shift pressed?
 		if (e.keyCode == 16)
 			upperCase = true;
 	}
-
+	
 	function KeyUpHandler(e)
 	{
 		// players keybindings
@@ -371,34 +388,15 @@ window.onload = function ()
 
 	function LoadAssets()
 	{
-		/*let images = 
-		[
-			"images/test.png",
-			"images/t2.png"
-		]
-		
-		for (let i = 0; i < images.length; i++)
-		{
-			let img = new Image();
-			img.src = images[i];
-			assets.images.push(img);
-		}*/
-		
-		/*let images = {};
-
-		let ico_editNameNormal = new Image();
-		ico_editNameNormal.src = "images/ico_editNameNormal.png";
-		images["ico_editNameNormal"] = ico_editNameNormal;
-		
-		let ico_editNameHover = new Image();
-		ico_editNameHover.src = "images/ico_editNameHover.png";
-		images["ico_editNameHover"] = ico_editNameHover;*/
-		
-		// TODO: test quality with 32x32; change hover img to same
 		let images = 
 		{
 			ico_editNameNormal: "images/ico_editNameNormal.png",
-			ico_editNameHover: "images/ico_editNameHover.png"
+			ico_editNameHover: "images/ico_editNameHover.png",
+			ico_editColorNormal: "images/ico_editColorNormal.png",
+			ico_editColorHover: "images/ico_editColorHover.png",
+			ico_customizationNormal: "images/ico_customizationNormal.png",
+			ico_customizationHover: "images/ico_customizationHover.png"
+			
 				
 		}
 		
@@ -619,24 +617,29 @@ window.onload = function ()
 		}
 	}
 
-	function DrawRectangle(x, y, w, h, border)
+	function DrawRectangle(x, y, w, h, cornerCurve, fill = false)
 	{
 		ctx.beginPath();
-		ctx.moveTo(x + border, y);
-		ctx.lineTo(x + w - border, y);
-		ctx.quadraticCurveTo(x + w - border, y, x + w, y + border);
-		ctx.lineTo(x + w, y + h - border);
-		ctx.quadraticCurveTo(x + w, y + h - border, x + w - border, y + h);
-		ctx.lineTo(x + border, y + h);
-		ctx.quadraticCurveTo(x + border, y + h, x, y + h - border);
-		ctx.lineTo(x, y + border);
-		ctx.quadraticCurveTo(x, y + border, x + border, y);
+		ctx.moveTo(x + cornerCurve, y);
+		ctx.lineTo(x + w - cornerCurve, y);
+		ctx.quadraticCurveTo(x + w - cornerCurve, y, x + w, y + cornerCurve);
+		ctx.lineTo(x + w, y + h - cornerCurve);
+		ctx.quadraticCurveTo(x + w, y + h - cornerCurve, x + w - cornerCurve, y + h);
+		ctx.lineTo(x + cornerCurve, y + h);
+		ctx.quadraticCurveTo(x + cornerCurve, y + h, x, y + h - cornerCurve);
+		ctx.lineTo(x, y + cornerCurve);
+		ctx.quadraticCurveTo(x, y + cornerCurve, x + cornerCurve, y);
 		ctx.closePath();
 		ctx.stroke();
+
+		if (fill)
+			ctx.fill();	
 	}
 	
 	function DrawNeonRect(x, y, w, h, color)
 	{
+		ctx.globalCompositeOperation = "lighter";
+
 		let r = hexToRgb(color).r;
 		let g = hexToRgb(color).g;
 		let b = hexToRgb(color).b;
@@ -655,6 +658,7 @@ window.onload = function ()
 		ctx.lineWidth=1.5;
 		DrawRectangle(x, y, w, h, 1);
 		
+		ctx.globalCompositeOperation = "source-over";
 		ctx.shadowBlur = 0;
 	};
 
@@ -892,7 +896,7 @@ window.onload = function ()
 	{
 		if (PointIsInside(mouseX, mouseY, x, y, w, h))
 		{ // mouse hover
-			ctx.shadowColor = "#fff";
+			ctx.shadowColor = "#aaa";
 			ctx.shadowBlur = 10;
 			ctx.drawImage(iconHover, x, y, w, h);
 			ctx.shadowBlur = 0;
@@ -926,31 +930,38 @@ window.onload = function ()
 			return false;
 	}
 
+	function DrawNeonText(text, x, y, font, color)
+	{
+		ctx.font = font;
+		ctx.shadowColor = color;
+		ctx.shadowBlur = 20;
+		ctx.shadowOffsetX = x + 10000;
+		ctx.fillStyle ="#fff";
+		ctx.fillText(text, -10000, y);
+		ctx.fillText(text, -10000, y);
+		ctx.fillText(text, -10000, y);
+		ctx.shadowOffsetX = 0;
+		ctx.fillText(text, x, y);
+		ctx.shadowBlur = 0;
+	}
+
 	function DrawPlayerNamesAndButtons()
 	{
 		let fontSizePlayer = cw * 0.028;
 		for (let i = 0; i < players.length; i++)
 		{
 			// name text
+			// TODO: limit letter count (done in key handler?)
 			let nameYoffset = cw * 0.1;
 			let nameYspacing = i * fontSizePlayer * 1.5;
 			let nameX = cw * 0.08;
 			let nameY = nameYoffset + nameYspacing;
-			ctx.font = "300 " + fontSizePlayer + "px Open sans";
-			ctx.fillStyle ="#fff";
-			ctx.shadowColor = players[i].color;
-			ctx.shadowBlur = 20;
-			ctx.shadowOffsetX = nameX + 1000;
-			ctx.fillText(players[i].name, -1000, nameY);
-			ctx.fillText(players[i].name, -1000, nameY);
-			ctx.fillText(players[i].name, -1000, nameY);
-			ctx.shadowOffsetX = 0;
-			ctx.fillText(players[i].name, nameX, nameY);
-			ctx.shadowBlur = 0;
+			nameFont = "300 " + fontSizePlayer + "px Open sans";
+			DrawNeonText(players[i].name, nameX, nameY, nameFont, players[i].color);
 			
-			// edit name button
+			// OLD edit name button TODO: repurpose to delete palyer
 			let buttonSize = cw * 0.02;
-			let editNameButtonX = cw * 0.2;
+			let editNameButtonX = cw * 0.3;
 			let editNameButtonY = nameYoffset + nameYspacing - fontSizePlayer * 0.35 - buttonSize / 2;
 			// draw button and detect click
 			if (DrawButton(editNameButtonX, editNameButtonY, buttonSize, buttonSize, assets.images.ico_editNameNormal, assets.images.ico_editNameHover))
@@ -958,55 +969,134 @@ window.onload = function ()
 				mouseUpX = null;
 				mouseUpX = null;
 				editingNameIndex = i;
+				// logic of this click is in key handler
 			}
 
-			// edit color button
+			// player customization button
 			let editColorButtonX = editNameButtonX + buttonSize + cw * 0.01;
 			let editColorButtonY = editNameButtonY;
-			// draw button and detect click
-			if (DrawButton(editColorButtonX,editColorButtonY, buttonSize, buttonSize, assets.images.ico_editNameNormal, assets.images.ico_editNameHover))
-			{ // click detected
-				mouseUpX = null;
-				mouseUpX = null;
-				editingNameIndex = i; // change
+			if (playerCustomizationIndex == null)
+			{ // if there is no dialog menu draw button and detect click
+				if (DrawButton(editColorButtonX,editColorButtonY, buttonSize, buttonSize, assets.images.ico_customizationNormal, assets.images.ico_customizationHover))
+				{ // click detected
+					mouseUpX = null;
+					mouseUpX = null;
+					playerCustomizationIndex = i;
+					// logic of this click is in dialog menu (DrawCustomizationDialog)					
+				}
 			}
+			else
+			{ // if there is dialog, don't detect click and draw without highlight
+				DrawButton(editColorButtonX, editColorButtonY, buttonSize, buttonSize, assets.images.ico_customizationNormal, assets.images.ico_customizationNormal);
+			}	
+			
 
 			
 		// end for loop through all players
 		}
-
-		// draw cursor (must be in separate loop)
-		for (let i = 0; i < players.length; i++)
-		{ // draw blinking cursor for player that is beeing edited (read player index from editingNameIndex)
-			if (editingNameIndex == i)
-			{
-				let nameYoffset = cw * 0.1;
-				let nameYspacing = i * fontSizePlayer * 1.5;
-				let nameX = cw * 0.08;
-
-				let cursorHeight = cw * 0.026;
-				let cursorWidth = cw * 0.0008;
-				let cursorX = nameX + ctx.measureText(players[i].name).width + cw * 0.004;
-				let cursorY = nameYoffset + nameYspacing - fontSizePlayer * 0.35 - cursorHeight / 2;
-				ctx.beginPath();
-				ctx.rect(cursorX, cursorY, cursorWidth, cursorHeight);
-				ctx.fillStyle = "#eee";
-				ctx.shadowColor = players[i].color;
-				ctx.fill();
-				ctx.shadowBlur = 10;
-				if (Math.floor(new Date().getTime() / 1000 % 2))
-				{
-					ctx.fill();
-					ctx.fill();
-					ctx.fill();
-					ctx.fill();
-				}	
-				ctx.closePath();
-			}
-		}
 		
 	}
 
+	function DrawCustomizationDialog()
+	{
+		// TODO: on button 'OK', set playerCustomizationIndex = null
+
+		// background tint
+		ctx.beginPath();
+		ctx.rect(0, 0, canvas.width, canvas.height);
+		ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+		ctx.fill();
+		ctx.closePath();
+
+		// dialog window
+		let width = cw * 0.4;
+		let height = cw * 0.2;
+		let x = canvas.width / 2 - width / 2;
+		let y = canvas.height / 2 - height / 2 - cw * 0.05;
+		DrawNeonRect(x, y, width, height, "#333");
+		ctx.fillStyle = "#222";
+		DrawRectangle(x, y, width, height, 3, true);
+
+		// player name
+		let fontSize = cw * 0.025;
+		let nameX = x + width / 2 - ctx.measureText(players[playerCustomizationIndex].name).width / 2;
+		let nameY = y + fontSize + cw*0.01;
+		let nameFont = "300 " + fontSize + "px Open sans";
+		DrawNeonText(players[playerCustomizationIndex].name, nameX, nameY, nameFont, players[playerCustomizationIndex].color);
+
+		// edit name button
+		let buttonSize = cw * 0.02;
+		let editNameButtonX = nameX + ctx.measureText(players[playerCustomizationIndex].name).width + cw * 0.02;
+		let editNameButtonY = nameY - fontSize * 0.35 - buttonSize / 2;
+		// draw button and detect click
+		if (DrawButton(editNameButtonX, editNameButtonY, buttonSize, buttonSize, assets.images.ico_editNameNormal, assets.images.ico_editNameHover))
+		{ // click detected
+			mouseUpX = null;
+			mouseUpX = null;
+			editingNameIndex = playerCustomizationIndex;
+			// logic of this click is in key handler
+		}
+
+		// draw blinking cursor
+		if (editingNameIndex != null)
+		{
+			let nameYoffset = cw * 0.1;
+			let cursorHeight = cw * 0.026;
+			let cursorWidth = cw * 0.0008;
+			let cursorX = nameX + ctx.measureText(players[playerCustomizationIndex].name).width + cw * 0.004;
+			let cursorY = nameY - fontSize * 0.35 - cursorHeight / 2;
+			ctx.beginPath();
+			ctx.rect(cursorX, cursorY, cursorWidth, cursorHeight);
+			ctx.fillStyle = "#eee";
+			//ctx.shadowColor = players[playerCustomizationIndex].color;
+			ctx.fill();
+			ctx.shadowBlur = 10;
+			if (Math.floor(new Date().getTime() / 1000 % 2))
+			{
+				ctx.fill();
+				ctx.fill();
+				ctx.fill();
+				ctx.fill();
+			}	
+			ctx.closePath();
+		}
+		
+		// TODO: read colors from matrix of colors and draw them; highlight selected
+		// draw colors
+		let colors = 
+		[
+			["#FF0000", "#800000", "#FFFF00", "#FFFF00", "#FFFF00"],
+			["#00FF00", "#00FFFF", "#0055cc", "#0055cc", "#0055cc"],
+			["#FF00FF", "#800080", "#777777", "#0055cc", "#0055cc"]
+		]
+		for (let i = 0; i < colors.length; i++)
+		{
+			for (let j = 0; j < colors[i].length; j++)
+			{
+				let colorSpacing = cw * 0.015;
+				let colorSize = cw * 0.017;
+				let colorX = x + cw * 0.02 + j * (colorSize + colorSpacing);
+				let colorY = y + cw * 0.06 + i * (colorSize + colorSpacing);
+
+				if (PointIsInside(mouseX, mouseY, colorX, colorY, colorSize, colorSize))
+				{ // mouse hover
+					DrawNeonRect(colorX, colorY, colorSize, colorSize, colors[i][j]);DrawNeonRect(colorX, colorY, colorSize, colorSize, colors[i][j]);
+				}
+				else
+				{ // normal mode
+					DrawNeonRect(colorX, colorY, colorSize, colorSize, colors[i][j]);
+				}
+
+				if (PointIsInside(mouseUpX, mouseUpY, colorX, colorY, colorSize, colorSize))
+				{ // detect mouse click
+					players[playerCustomizationIndex].color = colors[i][j];
+				}
+			}	
+		}
+		
+
+	}
+	
 	function MenuUpdate()
 	{
 		// draw default players and settings (or read from file)
@@ -1015,17 +1105,31 @@ window.onload = function ()
 
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		
-		DrawPlayerNamesAndButtons();
 		
 
+		DrawPlayerNamesAndButtons();
+		
+		
+
+
+		// dialog menus
+		if (playerCustomizationIndex != null)
+			DrawCustomizationDialog();
+		
 		
 		if (gameState == "menu")
 		{
 			requestAnimationFrame(MenuUpdate);
-		}	
+		}
+
 		
 	}
 
+	ctx.beginPath();
+	ctx.rect(100, 100, 100, 100);
+	ctx.fillStyle = "#f0f";
+	ctx.fill();
+	ctx.closePath();
 
 
 
