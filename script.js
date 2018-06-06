@@ -2202,8 +2202,8 @@ window.onload = function ()
 		// title
 		let font = "300 " + cw * 0.04 + "px Open sans";
 		ctx.textAlign = "center";
-		DrawNeonText("NEON SQUARE BATTLES", cw / 2, cw * 0.07, font, "#15f");
-		DrawNeonText("NEON SQUARE BATTLES", cw / 2 + cw * 0.0037, cw * 0.07, font, "#15f", 0);
+		DrawNeonText("GLOWSTORM", cw / 2, cw * 0.07, font, "#15f");
+		DrawNeonText("GLOWSTORM", cw / 2 + cw * 0.0027, cw * 0.07, font, "#15f", 0);
 		ctx.textAlign = "left";
 		
 		// Start button
