@@ -213,6 +213,9 @@ window.onload = function ()
 		// initialize some variables
 		Variables();
 
+		// TODO: loader
+		LoadAssets();
+
 		// initialize players
 		let keybindings =
 		{
@@ -234,7 +237,7 @@ window.onload = function ()
 		}	
 		player = new Player("Red", cw - (cw * 0.08), canvas.height / 2, "#cc1100", keybindings);
 		players.push(player);
-		/*keybindings =
+		keybindings =
 		{
 			up: 73,
 			down: 75,
@@ -243,7 +246,14 @@ window.onload = function ()
 			shoot: 16
 		}	
 		player = new Player("John", cw / 2, canvas.height / 2, "#00ff22", keybindings);
-		players.push(player);*/
+		players.push(player);
+		players.push(player);
+		players.push(player);
+		players.push(player);
+		players.push(player);
+		players.push(player);
+		players.push(player);
+		players.push(player);
 		
 		
 		MenuUpdate();	// draw main menu; main menu will later call update
@@ -261,6 +271,7 @@ window.onload = function ()
 		restartKey = false;
 		gameState = "menu";
 		players = [];
+		assets = { images: [], sounds: [] };
 	}
 
 	function KeyDownHandler(e)
@@ -293,8 +304,27 @@ window.onload = function ()
 					keybinding[1] = false;
 			}
 		}
-
 	}
+
+	function LoadAssets()
+	{
+		let images = 
+		[
+			"images/test.png",
+			"images/t2.png"
+		]
+		
+		for (let i = 0; i < images.length; i++)
+		{
+			let img = new Image();
+			img.src = images[i];
+			assets.images.push(img);
+		}	
+		
+
+		
+	}
+
 	
 	function CollisionCheckPlayers()
 	{ // player with player collision check
@@ -696,18 +726,34 @@ window.onload = function ()
 	// Main menu functions ##################################################################################################
 	function MenuUpdate()
 	{
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+
 		// draw default players and settings (or read from file)
 		// on every change, update variables (and save to file)
 		// on press play, change mode and call Update()
 
+		/*
+			Usefull
+
+			//ctx.drawImage(assets.images[i], i*100, 0, 100, 100);
+
+			// get text size
+			//console.log(ctx.measureText(players[0].name));
+		*/
 
 		// make a button
-
+		
+		
 		// draw players for customization
+		let fontSizePlayer = cw * 0.03;
 		for (let i = 0; i < players.length; i++)
 		{
+			ctx.font = fontSizePlayer + "px Arial";
+			ctx.fillStyle = players[i].color;
+			ctx.fillText(players[i].name, cw * 0.08, cw * 0.1 + i * fontSizePlayer * 1.5);
+		}
 
-		}	
+		
 
 		
 		if (gameState == "menu")
