@@ -129,7 +129,7 @@ window.onload = function ()
 			this.y += this.velY;
 
 			// player with map walls collsion check
-			let collisionResult = CollisionCheckInside(this.x, this.y, this.size + cw * 0.003, this.size + cw * 0.003, canvas.width / 2, canvas.height / 2, canvas.width, canvas.height);
+			let collisionResult = CollisionCheckInside(this.x, this.y, this.size + cw * 0.003, this.size + cw * 0.003, canvas.width / 2, (canvas.height - scoresHeight) / 2, canvas.width, canvas.height - scoresHeight);
 			if (collisionResult.x != null)
 			{
 				this.x = collisionResult.x;
@@ -249,6 +249,7 @@ window.onload = function ()
 		mouseY = null;							// mouse y position
 		mouseUpX = null;						// x position where last click was detected
 		mouseUpY = null;						// y position where last click was detected
+		scoresHeight = cw * 0.03;				// width of score panel; global because players should colide with it
 
 		// main menu
 		playerCustomizationIndex = null;		// index of player who is beeing customized in customization dialog; if !null dialog exists
@@ -642,22 +643,26 @@ window.onload = function ()
 	{
 		for (let i = 0; i < players.length; i++)
 		{
+			if (players[i].health <= 0)
+				continue;
+			
 			// player body
 			DrawNeonRect(players[i].x - players[i].size / 2, players[i].y - players[i].size / 2, players[i].size, players[i].size, players[i].color);
 		}
 
 		for (let i = 0; i < players.length; i++)
 		{ // this is separate from player body, so that health is always drawn on top
+			if (players[i].health <= 0)
+				continue;
 			
 			// player health as text
 			/*ctx.font = "12px Arial";
 			ctx.fillStyle = "#eee";
 			ctx.fillText(players[i].health, players[i].x - 10, players[i].y - players[i].size / 2 - cw * 0.012);*/
 
-			// TODO: draw player name
+			// TODO: draw player name?
 
 			// player health bar
-			
 			let barWidth = players[i].size * 1.3;
 			let barHeight = cw * 0.001;
 			ctx.beginPath();		// health bar background
@@ -947,6 +952,16 @@ window.onload = function ()
 
 	}
 
+	function DrawScores()
+	{
+		// background tint
+		ctx.beginPath();
+		ctx.rect(0, ch - scoresHeight, cw, scoresHeight);
+		ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+		ctx.fill();
+		ctx.closePath();
+	}
+
 	function Update()
 	{
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -975,6 +990,7 @@ window.onload = function ()
 
 		endGameCheck();
 
+		DrawScores();
 
 		//setInterval(Update, 1000);
 		requestAnimationFrame(Update);
@@ -1400,7 +1416,15 @@ window.onload = function ()
 
 	function DrawOtherMenuUI()
 	{
-		// Strt button
+		// title
+		let font = "300 " + cw * 0.04 + "px Open sans";
+		ctx.textAlign = "center";
+		DrawNeonText("NEON SQUARE BATTLES", cw / 2, cw * 0.07, font, "#15f");
+		DrawNeonText("NEON SQUARE BATTLES", cw / 2 + cw*0.004, cw * 0.07, font, "#15f", 500);
+		ctx.textAlign = "left";
+		
+
+		// Start button
 		let btnW = cw * 0.12;
 		let btnH = cw * 0.03;
 		let btnX = canvas.width - canvas.width / 4 - btnW / 2;			// 3/4 of canvas width
@@ -1413,6 +1437,14 @@ window.onload = function ()
 			
 			gameState = "game";
 		}
+
+		// preview panel (placeholder)
+		for (let i = 0; i < players.length; i++)
+		{
+			let squareW = cw * 0.06;
+			let squareColor = players[i].color;
+			DrawNeonRect(cw * 0.7+i*30, cw * 0.17+i*30, squareW, squareW, squareColor);
+		}	
 	}
 
 
@@ -1430,8 +1462,7 @@ window.onload = function ()
 		
 		
 
-
-		// dialog menus
+		// dialog menus (draw this last)
 		if (playerCustomizationIndex != null)
 			DrawCustomizationDialog();
 		
