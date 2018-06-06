@@ -45,7 +45,7 @@ window.onload = function ()
 			this.rechargeDelay = 5000;						// default 5000
 			this.bullets = [];
 			this.bulletOffsetFromPlayer = cw * 0.008;
-			this.bulletSpeed = cw * 0.009;					// default 0.006
+			this.bulletSpeed = cw * 0.008;					// default 0.006
 
 			this.keybindings =
 			{
@@ -228,7 +228,7 @@ window.onload = function ()
 			left: 65,
 			right: 68,
 			shoot: 32
-		}	
+		}
 		let player = new Player("Blue", cw * 0.08, canvas.height / 2, "#0055cc", keybindings);
 		players.push(player);
 		keybindings =
@@ -469,6 +469,11 @@ window.onload = function ()
 			ctx.fillStyle = "#00ff33";
 			ctx.fill();
 			ctx.closePath();
+
+			// ammo clip
+			let ammoBoxSize = cw * 0.01;
+			let ammoBoxSpacing = cw * 0.01;
+			let firstBoxX = players[i].x - // firstBoxX is not in center of the box, but in upper-left corner
 		}
 	}
 
