@@ -220,44 +220,10 @@ window.onload = function ()
 		// TODO: loader?
 		LoadAssets();
 
-		// initialize players
-		let keybindings =
-		{
-			up: 87,
-			down: 83,
-			left: 65,
-			right: 68,
-			shoot: 32
-		}
-		let player = new Player("Blue", cw * 0.08, canvas.height / 2, "#0055cc", keybindings);
-		players.push(player);
-		keybindings =
-		{
-			up: 38,
-			down: 40,
-			left: 37,
-			right: 39,
-			shoot: 96
-		}	
-		player = new Player("Red", cw - (cw * 0.08), canvas.height / 2, "#aa1100", keybindings);
-		players.push(player);
-		keybindings =
-		{
-			up: 73,
-			down: 75,
-			left: 74,
-			right: 76,
-			shoot: 16
-		}	
-		player = new Player("John", cw / 2, canvas.height / 2, "#009911", keybindings);
-		players.push(player);
-		/*players.push(player);
-		players.push(player);
-		players.push(player);
-		players.push(player);
-		players.push(player);
-		players.push(player);
-		players.push(player);*/
+		// start with 2 players
+		AddNewPlayer();
+		AddNewPlayer();
+		
 		
 		
 		MenuUpdate();	// draw main menu; main menu will later call update
@@ -271,15 +237,17 @@ window.onload = function ()
 	{
 		// general
 		cw = canvas.width;			// magic constant for converstion from pixels to multiples of canvas width is 0.0008; for cw * x, x = pixel_value * 0.0008
+		ch = canvas.height;
 		endgame = false;
 		restartKey = false;
 		gameState = "menu";
 		players = [];
+		maxNumberOfPlayers = 8;					// maximum number of players
 		assets = { images: {}, sounds: [] };
-		mouseX = null;
-		mouseY = null;
-		mouseUpX = null;
-		mouseUpY = null;
+		mouseX = null;							// mouse x position
+		mouseY = null;							// mouse y position
+		mouseUpX = null;						// x position where last click was detected
+		mouseUpY = null;						// y position where last click was detected
 
 		// main menu
 		playerCustomizationIndex = null;		// index of player who is beeing customized in customization dialog; if !null dialog exists
@@ -287,9 +255,93 @@ window.onload = function ()
 		editingKeybindIndex = null;				// index of player whose keybindings are beeing edited; if !null editing is in progress
 		keybindAction = "";						// up, down, left, right or shoot
 		upperCase = false;						// is shift pressed?
-		//TODO?: if there is dialog on screen disable other buttons
+
+		// color palette
+		colorPalette = 
+		[
+			["#C00300", "#C04000", "#9A6600", "#9A9A00", "#6FA600"],
+			["#0040C0", "#0080C0", "#00A66F", "#00A637", "#00C000"],
+			["#0000C0", "#4000C0", "#A000C0", "#C00060", "#606060"]
+		]
+
+		// player defaults (name, color, keybindings)
+		playerCustDefaults = [];
+		playerCustDefaults[0] = { name: "Player 1", color: colorPalette[1][0], keybindings:
+			{
+				up: 87,
+				down: 83,
+				left: 65,
+				right: 68,
+				shoot: 16
+			}
+		};
+		playerCustDefaults[1] = { name: "Player 2", color: colorPalette[0][0], keybindings:
+			{
+				up: 38,
+				down: 40,
+				left: 37,
+				right: 39,
+				shoot: 96
+			}
+		};
+		playerCustDefaults[2] = { name: "Player 3", color: colorPalette[1][4], keybindings:
+			{
+				up: 73,
+				down: 75,
+				left: 74,
+				right: 76,
+				shoot: 32
+			}	
+		};
+		playerCustDefaults[3] = { name: "Player 4", color: colorPalette[0][1], keybindings:
+			{
+				up: 101,
+				down: 98,
+				left: 97,
+				right: 99,
+				shoot: 107
+			}	
+		};
+		playerCustDefaults[4] = { name: "Player 5", color: colorPalette[2][1], keybindings:
+			{
+				up: 84,
+				down: 71,
+				left: 70,
+				right: 72,
+				shoot: 88
+			}	
+		};
+		playerCustDefaults[5] = { name: "Player 6", color: colorPalette[0][3], keybindings:
+			{
+				up: 36,
+				down: 35,
+				left: 46,
+				right: 34,
+				shoot: 8
+			}	
+		};
+		playerCustDefaults[6] = { name: "Player 7", color: colorPalette[1][2] };
+		playerCustDefaults[7] = { name: "Player 8", color: colorPalette[2][3] };
+
+		// player defaults (coordinates)
+		// player default coordinates are different for games with different number of players
+		// playerCoordDefaults[m][n]; m = number of players in game, n = nth player of total m players
+		playerCoordDefaults = 
+		[
+			// 1 player game
+			[{x: 100, y: 200}],
+
+			// 2 player game
+			[{x: 100, y: 200}, {x: 200, y: 100}],
+
+			// 3 player game
+			[]
+
+		]// end playerCoordDefaults
 	}
 
+	// TODO: disable start if no players
+	// TODO: exclamation point for unbound keys
 	// TODO: text in FF; keyCode depricated?; test all in other  browsers	
 	function KeyDownHandler(e)
 	{
@@ -412,9 +464,12 @@ window.onload = function ()
 			ico_editColorNormal: "images/ico_editColorNormal.png",
 			ico_editColorHover: "images/ico_editColorHover.png",
 			ico_customizationNormal: "images/ico_customizationNormal.png",
-			ico_customizationHover: "images/ico_customizationHover.png"
-			
-				
+			ico_customizationHover: "images/ico_customizationHover.png",
+			ico_PlusNormal: "images/ico_PlusNormal.png",
+			ico_PlusHover: "images/ico_PlusHover.png",
+			ico_xNormal: "images/ico_xNormal.png",
+			ico_xHover: "images/ico_xHover.png"
+
 		}
 		
 		for (let i in images)
@@ -909,18 +964,18 @@ window.onload = function ()
 
 
 	// Main menu functions ##################################################################################################
-	function DrawButton(x, y, w, h, iconNormal, iconHover)
+	function DrawButton(x, y, w, h, iconNormal, iconHover, color = "#aaa")
 	{
 		if (PointIsInside(mouseX, mouseY, x, y, w, h))
 		{ // mouse hover
-			ctx.shadowColor = "#aaa";
+			ctx.shadowColor = color;
 			ctx.shadowBlur = 10;
 			ctx.drawImage(iconHover, x, y, w, h);
 			ctx.shadowBlur = 0;
 		}
 		else
 		{ // normal mode
-			ctx.shadowColor = "#aaa";
+			ctx.shadowColor = color;
 			ctx.shadowBlur = 10;
 			ctx.drawImage(iconNormal, x, y, w, h);
 			ctx.shadowBlur = 0;
@@ -962,39 +1017,44 @@ window.onload = function ()
 		ctx.shadowBlur = 0;
 	}
 
+	function AddNewPlayer()
+	{
+		// read from defaults based on currnet players.length and add player
+		let name = playerCustDefaults[players.length].name;
+		let color = playerCustDefaults[players.length].color;
+		let keybindings = playerCustDefaults[players.length].keybindings;
+		let player = new Player(name, 0, 0, color, keybindings);
+		players.push(player);
+
+		// TODO: update x and y of all players
+		for (let i = 0; i < players.length; i++)
+		{ // playerCoordDefaults[m][n]; m = number of players in game, n = nth player of total m players
+			players[i].x = playerCoordDefaults[players.length][i].x;
+			players[i].y = playerCoordDefaults[players.length][i].y;
+		}	
+		
+	}
+
 	function DrawPlayerNamesAndButtons()
 	{
-		let fontSizePlayer = cw * 0.028;
+		let fontSizePlayer = cw * 0.024;		// old val 0.028
+		let nameX = cw * 0.12;
+		let nameYoffset = cw * 0.15;				// also: Y position of first name
+		let custButtonSize = cw * 0.02;
+		let custButtonX = nameX + cw * 0.27;
 		for (let i = 0; i < players.length; i++)
 		{
 			// name text
-			// TODO: limit letter count (done in key handler?)
-			let nameYoffset = cw * 0.1;
 			let nameYspacing = i * fontSizePlayer * 1.5;
-			let nameX = cw * 0.08;
 			let nameY = nameYoffset + nameYspacing;
 			nameFont = "300 " + fontSizePlayer + "px Open sans";
 			DrawNeonText(players[i].name, nameX, nameY, nameFont, players[i].color);
 			
-			// OLD edit name button TODO: repurpose to delete palyer
-			let buttonSize = cw * 0.02;
-			let editNameButtonX = cw * 0.3;
-			let editNameButtonY = nameYoffset + nameYspacing - fontSizePlayer * 0.35 - buttonSize / 2;
-			// draw button and detect click
-			if (DrawButton(editNameButtonX, editNameButtonY, buttonSize, buttonSize, assets.images.ico_editNameNormal, assets.images.ico_editNameHover))
-			{ // click detected
-				mouseUpX = null;
-				mouseUpX = null;
-				editingNameIndex = i;
-				// logic of this click is in key handler
-			}
-
 			// player customization button
-			let editColorButtonX = editNameButtonX + buttonSize + cw * 0.01;
-			let editColorButtonY = editNameButtonY;
+			let custButtonY = nameYoffset + nameYspacing - fontSizePlayer * 0.35 - custButtonSize / 2;
 			if (playerCustomizationIndex == null)
 			{ // if there is no dialog menu draw button and detect click
-				if (DrawButton(editColorButtonX,editColorButtonY, buttonSize, buttonSize, assets.images.ico_customizationNormal, assets.images.ico_customizationHover))
+				if (DrawButton(custButtonX, custButtonY, custButtonSize, custButtonSize, assets.images.ico_customizationNormal, assets.images.ico_customizationHover))
 				{ // click detected
 					mouseUpX = null;
 					mouseUpX = null;
@@ -1004,20 +1064,88 @@ window.onload = function ()
 			}
 			else
 			{ // if there is dialog, don't detect click and draw without highlight
-				DrawButton(editColorButtonX, editColorButtonY, buttonSize, buttonSize, assets.images.ico_customizationNormal, assets.images.ico_customizationNormal);
-			}	
+				DrawButton(custButtonX, custButtonY, custButtonSize, custButtonSize, assets.images.ico_customizationNormal, assets.images.ico_customizationNormal);
+			}
+
+			// exclamation point for conflicts
+			let conflictDetected = false;
+			for (let keybinding of Object.entries(players[i].keybindings))
+			{
+				for (let j = 0; j < players.length; j++)
+				{
+					for (let key of Object.entries(players[j].keybindings))
+					{
+						if (!(j == i && keybinding[0] == key[0]))
+						{ // skip self; check with all other keybindings
+							if (keybinding[1][0] == key[1][0])
+							{ // conflict detected
+								conflictDetected = true;
+							}
+						}
+					}
+				}	
+			}
+			if (conflictDetected)
+			{
+				// draw exclamation
+				let conflictFontSize = fontSizePlayer * 0.75;
+				let conflictFont = "300 " + conflictFontSize + "px Open sans";
+				let conflictTextX = custButtonX - cw * 0.01;
+				let conflictTextY = custButtonY + custButtonSize/2 + conflictFontSize*0.35;
+				DrawNeonText("!", conflictTextX, conflictTextY, conflictFont, "#a00", 15);
+			}
 			
 
+
+
+			//  delete player button (should be drawn last in this loop)
+			let deleteButtonSize = cw * 0.012;
+			let deleteButtonX = nameX - cw * 0.03;
+			let deleteButtonY = nameYoffset + nameYspacing - fontSizePlayer * 0.35 - deleteButtonSize / 2;
+			if (playerCustomizationIndex == null)
+			{ // if there is no dialog menu draw button and detect click
+				if (DrawButton(deleteButtonX, deleteButtonY, deleteButtonSize, deleteButtonSize, assets.images.ico_xNormal, assets.images.ico_xHover, "#f00"))
+				{ // click detected
+					mouseUpX = null;
+					mouseUpX = null;
+					players.splice(i, 1);
+					i--;
+				}
+			}
+			else
+			{ // if there is dialog, don't detect click and draw without highlight
+				DrawButton(deleteButtonX, deleteButtonY, deleteButtonSize, deleteButtonSize, assets.images.ico_xNormal, assets.images.ico_xNormal, "#f00");
+			}
 			
 		// end for loop through all players
 		}
-		
+
+
+		// add player button as text
+		let btnW = custButtonX - nameX;
+		let btnH = cw*0.03;
+		let btnX = nameX;
+		let btnY =  nameYoffset - cw * 0.065;
+		if (playerCustomizationIndex == null)
+		{ // if there is no dialog menu draw button and detect click
+			if (DrawTextButton(btnX, btnY, btnW, btnH, "Add new player"))
+			{ // click detected
+				mouseUpX = null;
+				mouseUpX = null;
+				
+				if (players.length < maxNumberOfPlayers)
+					AddNewPlayer();
+			}
+		}
+		else
+		{ // if there is dialog, don't detect click and draw without highlight
+			DrawTextButton(btnX, btnY, btnW, btnH, "Add new player", false);
+		}
+
 	}
 
 	function DrawCustomizationDialog()
 	{
-		// TODO: on button 'OK', set playerCustomizationIndex = null
-
 		// background tint
 		ctx.beginPath();
 		ctx.rect(0, 0, canvas.width, canvas.height);
@@ -1026,8 +1154,8 @@ window.onload = function ()
 		ctx.closePath();
 
 		// dialog window
-		let width = cw * 0.4;
-		let height = cw * 0.2;
+		let width = cw * 0.45;
+		let height = cw * 0.25;
 		let x = canvas.width / 2 - width / 2;
 		let y = canvas.height / 2 - height / 2 - cw * 0.05;
 		DrawNeonRect(x, y, width, height, "#333");
@@ -1036,9 +1164,11 @@ window.onload = function ()
 
 		// player name
 		let fontSize = cw * 0.025;
-		let nameX = x + width / 2 - ctx.measureText(players[playerCustomizationIndex].name).width / 2;
-		let nameY = y + fontSize + cw*0.01;
+		//let nameX = x + width / 2 - ctx.measureText(players[playerCustomizationIndex].name).width / 2;	// stoped working for some reason
+		let nameX = x + width / 2 - ctx.measureText(players[playerCustomizationIndex].name).width * 0.8;	// dirty fix for dirty bug
+		let nameY = y + fontSize + cw * 0.01;
 		let nameFont = "300 " + fontSize + "px Open sans";
+		ctx.textAlign = "left";
 		DrawNeonText(players[playerCustomizationIndex].name, nameX, nameY, nameFont, players[playerCustomizationIndex].color);
 
 		// edit name button
@@ -1078,40 +1208,33 @@ window.onload = function ()
 			ctx.closePath();
 		}
 		
-		// TODO: read colors from matrix of colors and draw them; highlight selected
 		// draw colors
-		let colors = 
-		[
-			["#FF0000", "#800000", "#FFFF00", "#FFFF00", "#FFFF00"],
-			["#00FF00", "#00FFFF", "#0055cc", "#0055cc", "#0055cc"],
-			["#FF00FF", "#800080", "#777777", "#0055cc", "#0055cc"]
-		]
-		for (let i = 0; i < colors.length; i++)
+		for (let i = 0; i < colorPalette.length; i++)
 		{
-			for (let j = 0; j < colors[i].length; j++)
+			for (let j = 0; j < colorPalette[i].length; j++)
 			{
 				let colorSpacing = cw * 0.015;
 				let colorSize = cw * 0.017;
-				let colorX = x + cw * 0.02 + j * (colorSize + colorSpacing);
+				let colorX = x + cw * 0.04 + j * (colorSize + colorSpacing);
 				let colorY = y + cw * 0.08 + i * (colorSize + colorSpacing);
 
 				if (PointIsInside(mouseX, mouseY, colorX, colorY, colorSize, colorSize))
 				{ // mouse hover
 					let sizeIncrease = 1.5;
 					let coordShift = colorSize * 0.5 / 2;
-					DrawNeonRect(colorX - coordShift, colorY - coordShift, colorSize*sizeIncrease, colorSize*sizeIncrease, colors[i][j]);
-					DrawNeonRect(colorX - coordShift, colorY - coordShift, colorSize*sizeIncrease, colorSize*sizeIncrease, colors[i][j]);
+					DrawNeonRect(colorX - coordShift, colorY - coordShift, colorSize*sizeIncrease, colorSize*sizeIncrease, colorPalette[i][j]);
+					DrawNeonRect(colorX - coordShift, colorY - coordShift, colorSize*sizeIncrease, colorSize*sizeIncrease, colorPalette[i][j]);
 				}
 				else
 				{ // normal mode
-					DrawNeonRect(colorX, colorY, colorSize, colorSize, colors[i][j]);
+					DrawNeonRect(colorX, colorY, colorSize, colorSize, colorPalette[i][j]);
 				}
 
 				if (PointIsInside(mouseUpX, mouseUpY, colorX, colorY, colorSize, colorSize))
 				{ // detect mouse click
 					mouseUpX = null;
 					mouseUpX = null;
-					players[playerCustomizationIndex].color = colors[i][j];
+					players[playerCustomizationIndex].color = colorPalette[i][j];
 				}
 			}	
 		}
@@ -1126,7 +1249,7 @@ window.onload = function ()
 			let text = keybinding[0].charAt(0).toUpperCase() + keybinding[0].slice(1) + ":";
 			let keybindSpacing = count * fontSizeKeybind * 1.7;
 			count++;
-			let keybindLabelX = x + cw * 0.23;
+			let keybindLabelX = x + width - cw * 0.2;
 			let keybindLabelY = y + cw * 0.08 + keybindSpacing;
 			DrawNeonText(text, keybindLabelX, keybindLabelY, keybindingFont, "#999", 10);
 
@@ -1158,14 +1281,15 @@ window.onload = function ()
 				keybindAction = keybinding[0];
 			}
 
-
 			// keybinding text in field
 			text = KeycodeToChar(keybinding[1][0]);
+			if (text == null)
+				text = "";	
 			let keybindTextX = fieldX + fieldW / 2 - ctx.measureText(text).width / 2;
 			let keybindTextY = keybindLabelY;
 			DrawNeonText(text, keybindTextX, keybindTextY, keybindingFont, "#999", 10);
 
-			// TODO: exclamation point for conflicts
+			// exclamation point for conflicts (dialog)
 			let conflictDetected = false;
 			for (let i = 0; i < players.length; i++)
 			{
@@ -1176,9 +1300,7 @@ window.onload = function ()
 						if (keybinding[1][0] == key[1][0])
 						{ // conflict detected
 							conflictDetected = true;
-							
-						}	
-						
+						}
 					}
 				}
 			}
@@ -1187,12 +1309,64 @@ window.onload = function ()
 				// draw exclamation
 				let conflictTextX = fieldX;
 				let conflictTextY = keybindLabelY;
-				DrawNeonText("!", conflictTextX - cw*0.01, conflictTextY, keybindingFont, "#e22", 10);
-			}	
+				DrawNeonText("!", conflictTextX - cw * 0.01, conflictTextY, keybindingFont, "#e22", 10);
+			}
 
-		}	
-		
+		}
 
+		// draw OK button
+		let btnW = cw * 0.1;
+		let btnH = cw * 0.03;
+		let btnX = x + width / 2 - btnW / 2;
+		let btnY = y + height - btnH - cw * 0.02;
+		DrawTextButton(btnX, btnY, btnW, btnH, "OK");
+		if (PointIsInside(mouseUpX, mouseUpY, btnX, btnY, btnW, btnH))
+		{ // detect mouse click
+			mouseUpX = null;
+			mouseUpX = null;
+			
+			playerCustomizationIndex = null;
+		}
+
+			
+	}
+
+	function DrawTextButton(x, y, w, h, text, enabled = true)
+	{
+		let borderW = w;
+		let borderH = h;
+		let borderX = x;
+		let borderY = y;
+		let txt = text;
+		let buttonFontSize = cw * 0.015;
+		let buttonFont = "300 " + buttonFontSize + "px Open sans";
+		let textX = borderX + borderW / 2;
+		let textY = borderY + borderH / 2 + buttonFontSize * 0.35;
+
+		if (PointIsInside(mouseX, mouseY, borderX, borderY, borderW, borderH) && enabled)
+		{ // mouse hover
+			DrawNeonRect(borderX, borderY, borderW, borderH, "#222");
+			DrawNeonRect(borderX, borderY, borderW, borderH, "#222");
+			
+			ctx.textAlign = "center";
+			DrawNeonText(txt, textX, textY, buttonFont, "#999", 10);
+			ctx.textAlign = "left";
+		}
+		else
+		{ // normal mode
+			DrawNeonRect(borderX, borderY, borderW, borderH, "#222");
+		}
+		ctx.textAlign = "center";
+		DrawNeonText(txt, textX, textY, buttonFont, "#999", 10);
+		ctx.textAlign = "left";
+
+		let clicked = false;
+		if (PointIsInside(mouseUpX, mouseUpY, x, y, w, h))
+		{ // detect mouse click
+			clicked = true;
+		}
+
+		return clicked;
 	}
 	
 	function KeycodeToChar(keycode)
@@ -1206,6 +1380,23 @@ window.onload = function ()
 			return null;
 	}
 
+	function DrawOtherMenuUI()
+	{
+		// Strt button
+		let btnW = cw * 0.12;
+		let btnH = cw * 0.03;
+		let btnX = canvas.width - canvas.width / 4 - btnW / 2;			// 3/4 of canvas width
+		let btnY = canvas.height - cw * 0.11;
+		DrawTextButton(btnX, btnY, btnW, btnH, "Start");
+		if (PointIsInside(mouseUpX, mouseUpY, btnX, btnY, btnW, btnH))
+		{ // detect mouse click
+			mouseUpX = null;
+			mouseUpX = null;
+			
+			gameState = "game";
+		}
+	}
+
 
 	function MenuUpdate()
 	{
@@ -1215,9 +1406,9 @@ window.onload = function ()
 
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		
-		
-
 		DrawPlayerNamesAndButtons();
+		DrawOtherMenuUI();
+
 		
 		
 
@@ -1230,6 +1421,10 @@ window.onload = function ()
 		if (gameState == "menu")
 		{
 			requestAnimationFrame(MenuUpdate);
+		}
+		else if (gameState == "game")
+		{
+			Update();	
 		}
 
 		
