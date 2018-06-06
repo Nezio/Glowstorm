@@ -200,6 +200,11 @@ window.onload = function ()
 					}
 				}
 
+				// play sound
+				let sound = assets.sounds.snd_shoot.cloneNode();
+				sound.volume = volume;
+				sound.play();
+
 			}		
 
 		}
@@ -276,11 +281,17 @@ window.onload = function ()
 		playersStatesOnPause = [];				// saved states of players when pause was pressed; restore to players on unpause
 		powerups = [];							// array of spawned powerups
 		maxPowerups = 10;						// maximum number of powerups that can be on screen
-		powerupsInitDelay = 1000;				// delay before powerups begin spawning (in ms) (default 10000)
-		powerupsSpawnDelay = 10000;				// delay before next powerup spawns (in ms)
-		powerupsMinDelay = 5000;				// minimum delay before next powerup spawns (in ms)
+		powerupsDefaults = {
+			powerupsInitDelay : 1000,			// delay before powerups begin spawning (in ms) (default 10000)
+			powerupsSpawnDelay : 10000,			// delay before next powerup spawns (in ms)	(default 10000)
+			powerupsMinDelay : 5000				// minimum delay before next powerup spawns (in ms) (default 5000)
+		}	
+		powerupsInitDelay = powerupsDefaults.powerupsInitDelay;
+		powerupsSpawnDelay = powerupsDefaults.powerupsSpawnDelay;
+		powerupsMinDelay = powerupsDefaults.powerupsMinDelay;
 		powerupsUpdateStarted = false;			// has function to start powerup spawning been called?
 		powerupSize = cw * 0.017;				// must be global so it can be accessed in collision check
+		volume = 0.12;							// global volume; range 0-1
 
 		// main menu
 		playerCustomizationIndex = null;		// index of player who is beeing customized in customization dialog; if !null dialog exists
@@ -557,6 +568,20 @@ window.onload = function ()
 		assets.images = images;
 
 		// load sounds
+		let sounds = 
+		{
+			snd_shoot: "sounds/snd_shoot.wav",
+			snd_powerupPickup: "sounds/snd_powerupPickup.wav",
+			snd_hurt: "sounds/snd_hurt.wav"
+				
+		}
+		for (let s in sounds)
+		{
+			let src = sounds[s];
+			sounds[s] = new Audio(src);			
+			sounds[s].load();
+		}
+		assets.sounds = sounds;
 		
 	}
 
@@ -1011,6 +1036,11 @@ window.onload = function ()
 		let strokeColor = "#555";
 		players[playerIndex].color = color;
 		players[playerIndex].strokeColor = strokeColor;
+
+		// play sound
+		let sound = assets.sounds.snd_hurt.cloneNode();
+		sound.volume = volume;
+		sound.play();
 	}
 
 	function PauseGame()
@@ -1087,9 +1117,9 @@ window.onload = function ()
 	// TODO: new game countdown
 
 	function RestartGame()
-	{		
+	{	
+		// players
 		let newPlayers = [];
-
 		for (let i = 0; i < players.length; i++)
 		{
 			// persist
@@ -1104,7 +1134,6 @@ window.onload = function ()
 
 			newPlayers.push(player);
 		}
-
 		players = newPlayers;
 
 		// update(reset) x and y of all players
@@ -1113,6 +1142,13 @@ window.onload = function ()
 			players[i].x = playerCoordDefaults[players.length-1][i].x;
 			players[i].y = playerCoordDefaults[players.length-1][i].y;
 		}
+
+		// powerups
+		powerups = [];
+		powerupsInitDelay = powerupsDefaults.powerupsInitDelay;
+		powerupsSpawnDelay = powerupsDefaults.powerupsSpawnDelay;
+		powerupsMinDelay = powerupsDefaults.powerupsMinDelay;
+
 
 		endgame = false;
 	}
@@ -1280,7 +1316,7 @@ window.onload = function ()
 	function powerupsUpdate()
 	{
 		// all powerups for testing
-		/*for (let i = 0; i < defaultPowerups.length; i++)
+		for (let i = 0; i < defaultPowerups.length; i++)
 		{
 			for (let j = 0; j < 8; j++)
 			{
@@ -1289,11 +1325,10 @@ window.onload = function ()
 				let powerup = new Powerup(x, y, defaultPowerups[i].type, defaultPowerups[i].image, defaultPowerups[i].duration);
 				powerups.push(powerup);
 			}
-		}*/
-		
+		}
 		
 		// if maximum number of spawned powerups isn't exceeded, spawn another one
-		if (powerups.length < maxPowerups)
+		/*if (powerups.length < maxPowerups)
 		{
 			let x, y;
 			let collision;
@@ -1329,14 +1364,14 @@ window.onload = function ()
 			let powerupIndex = RandomInt(0, defaultPowerups.length - 1);		// choose random powerup from array of default powerups
 			let powerup = new Powerup(x, y, defaultPowerups[powerupIndex].type, defaultPowerups[powerupIndex].image, defaultPowerups[powerupIndex].duration);
 			powerups.push(powerup);
-		}
+		}*/
 		
 		// set time for next powerup spawn
 		powerupsSpawnDelay -= 500;
 		if (powerupsSpawnDelay < powerupsMinDelay)
 			powerupsSpawnDelay = powerupsMinDelay;	
 		
-		setTimeout(powerupsUpdate, powerupsSpawnDelay);
+		//setTimeout(powerupsUpdate, powerupsSpawnDelay);
 	}
 
 	function DrawPowerups()
@@ -1370,6 +1405,11 @@ window.onload = function ()
 				{ // collision detected
 					ApplyPowerup(i, powerups[j].type, powerups[j].duration);
 
+					// play sound
+					let sound = assets.sounds.snd_powerupPickup.cloneNode();
+					sound.volume = volume;
+					sound.play();
+
 					// remove picked up powerup
 					powerups.splice(j, 1);
 					j--;
@@ -1379,15 +1419,28 @@ window.onload = function ()
 
 	}
 
-	// WIP2
+	function DrawMaxedNotification(player)
+	{
+		let x = players[player].x + players[player].size / 2;
+		let y = players[player].y - players[player].size / 2;
+		
+
+		font = "300 " + cw * 0.012 + "px Open sans";
+		ctx.textAlign = "left";
+		DrawNeonText("Max", x , y, font, "#777", 10);
+		
+	}
+
 	function ApplyPowerup(player, type, duration)
 	{ // apply powerup of given type and duration to the player
 		switch (type)
 		{
 			case "clipSize":
 			{ // increase clip size by 1
-				if (players[player].clipSize < players[player].maxClipSize)
+				if (players[player].clipSize < 4/*players[player].maxClipSize*/)
 					players[player].clipSize++;
+				else
+					DrawMaxedNotification(player);
 					
 				break;	
 			}
