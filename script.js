@@ -42,7 +42,7 @@ window.onload = function ()
 			this.decceleration = this.acceleration / 3;		// must be <= accelearation/2
 			this.velX = 0;									// velocity, a vector, incudes direction AND speed
 			this.velY = 0;
-			this.clipSize = 5;
+			this.clipSize = 4;
 			this.maxClipSize = 7;
 			this.clipAmmo = this.clipSize;
 			this.canShoot = true;
@@ -231,11 +231,12 @@ window.onload = function ()
 	main();
 	function main()
 	{
+		LoadAssets();
+
 		// initialize some global variables
 		Variables();
 
-		// TODO: loader?
-		LoadAssets();
+		
 
 		// start with 2 players
 		AddNewPlayer();
@@ -260,7 +261,6 @@ window.onload = function ()
 		gameState = "menu";
 		players = [];
 		maxNumberOfPlayers = 6;					// maximum number of players
-		assets = { images: {}, sounds: [] };
 		mouseX = null;							// mouse x position
 		mouseY = null;							// mouse y position
 		mouseUpX = null;						// x position where last click was detected
@@ -271,10 +271,11 @@ window.onload = function ()
 		playersStatesOnPause = [];				// saved states of players when pause was pressed; restore to players on unpause
 		powerups = [];							// array of spawned powerups
 		maxPowerups = 10;						// maximum number of powerups that can be on screen
-		powerupsInitDelay = 1000;				// delay before powerups begin spawning (in ms)
+		powerupsInitDelay = 10000;				// delay before powerups begin spawning (in ms)
 		powerupsSpawnDelay = 10000;				// delay before next powerup spawns (in ms)
 		powerupsMinDelay = 5000;				// minimum delay before next powerup spawns (in ms)
-		powerupsUpdateStarted = false;
+		powerupsUpdateStarted = false;			// has function to start powerup spawning been called?
+		powerupSize = cw * 0.017;				// must be global so it can be accessed in collision check
 
 		// main menu
 		playerCustomizationIndex = null;		// index of player who is beeing customized in customization dialog; if !null dialog exists
@@ -290,6 +291,10 @@ window.onload = function ()
 			["#0040C0", "#0080C0", "#00A66F", "#00A637", "#00C000"],
 			["#0000C0", "#4000C0", "#A000C0", "#C00060", "#606060"]
 		]
+	
+		defaultPowerups = [						// types of powerups
+			{type: "clipSize", image: assets.images.ico_customizationNormal, duration: 0},
+		];
 
 		// player defaults (name, color, keybindings)
 		// TODO: change some controls as shift + Num0 dont work at the same time
@@ -514,6 +519,8 @@ window.onload = function ()
 
 	function LoadAssets()
 	{
+		assets = { images: {}, sounds: [] };
+
 		let images = 
 		{
 			ico_editNameNormal: "images/ico_editNameNormal.png",
@@ -1237,26 +1244,69 @@ window.onload = function ()
 
 	}
 
+	function RandomInt(min, max)
+	{
+		// Returns a random integer between min (inclusive) and max (inclusive)
+		// Using Math.round() will give you a non-uniform distribution!
+
+		return Math.floor(Math.random() * (max - min + 1)) + min;
+	}
+
 	function powerupsUpdate()
 	{
-		// WIP; TODO:
-		// create powerup class with x, y, type, image, size, duration (for timed powerups)...?
-		// if maximum number of spawned powerups isn't exceeded
-			// create and add powerup to powerups array; rand choose from array of powerup types, rand coord within limits
-		// create function to draw powerups
-		// add player with powerup collision check and call function to apply powerup to player that picked it up
-			// check how it works if two players get same powerup at the same time
-			// include timed powerups (maybe like dim defeated is done)
-		
-		let powerup = new Powerup(cw / 2, ch / 2, "clipSize", assets.images.ico_customizationNormal, 0);
-		powerups.push(powerup);
+		// WIP
+		// include timed powerups (maybe like dim defeated is done)
 
-		// set time forn next powerup spawn
-		powerupsSpawnDelay -= 1000;
+
+		// middle powerup for testing
+		//let powerup = new Powerup(cw / 2, ch / 2, "clipSize", powerupTypes[0].image, 0);
+		//powerups.push(powerup);
+		
+		// if maximum number of spawned powerups isn't exceeded, spawn another one
+		if (powerups.length < maxPowerups)
+		{
+			let x, y;
+			let collision;
+			do
+			{
+				x = RandomInt(cw * 0.02, cw - cw * 0.02);
+				y = RandomInt(cw * 0.02, ch - cw * 0.02 - scoresHeight);
+				
+				// collision check with other powerups (don't spawn powerup on top of another powerup)
+				collision = false;
+				for (let j = 0; j < powerups.length; j++)
+				{
+					let collisionResult = CollisionCheckOutside(x, y, powerupSize, powerupSize, powerups[j].x, powerups[j].y, powerupSize*10, powerupSize*10);
+					if (collisionResult.x != null)
+					{ // collision detected
+						collision = true;
+					}
+				}
+
+				// collsion with players (don't spawn powerup on top of player)
+				for (let j = 0; j < players.length; j++)
+				{
+					let collisionResult = CollisionCheckOutside(x, y, powerupSize, powerupSize, players[j].x, players[j].y, players[j].size*10, players[j].size*10);
+					if (collisionResult.x != null)
+					{ // collision detected
+						collision = true;
+					}
+				}
+			}
+			while (collision);
+
+			// create random powerup
+			let powerupIndex = RandomInt(0, defaultPowerups.length - 1);		// choose random powerup from array of default powerups
+			let powerup = new Powerup(x, y, defaultPowerups[powerupIndex].type, defaultPowerups[powerupIndex].image, defaultPowerups[powerupIndex].duration);
+			powerups.push(powerup);
+		}	
+		
+		// set time for next powerup spawn
+		powerupsSpawnDelay -= 500;
 		if (powerupsSpawnDelay < powerupsMinDelay)
 			powerupsSpawnDelay = powerupsMinDelay;	
 		
-		//setTimeout(powerupsUpdate, powerupsSpawnDelay);
+		setTimeout(powerupsUpdate, powerupsSpawnDelay);
 	}
 
 	function DrawPowerups()
