@@ -36,6 +36,7 @@ window.onload = function ()
 			this.strokeColor = "#fff";						// inside stroke color for neon rect
 			this.health = 100;
 			this.size = cw * 0.023;
+			this.minSize = this.size * 0.25;
 			this.maxSpeed = cw * 0.005;						// default 0.004 or 0.005
 			this.maxDiagonalSpeed = this.maxSpeed * 0.71;
 			this.acceleration = cw * 0.0015;				// between 0 and maxSpeed
@@ -46,15 +47,19 @@ window.onload = function ()
 			this.maxClipSize = 7;
 			this.clipAmmo = this.clipSize;
 			this.canShoot = true;
-			this.fireRateDelay = 500;						// fire rate delay in milliseconds; default 500
 			this.fireMode = null;
-			this.initialRechargeDelay = 2000;				// default 5000
-			this.rechargeDelay = 500;
+			this.fireRateDelay = 500;						// fire rate delay in milliseconds; default 500
+			this.minFireRateDelay = 100;
+			this.initialRechargeDelay = 2000;				// default 2000; should be greater than fireRateDelay
+			this.minInitialRechargeDelay = 500;
+			this.rechargeDelay = 500;						// default 500
+			this.minRechargeDelay = 200;
 			this.ammoRechargeDate = null;
 			this.bullets = [];
 			this.bulletOffsetFromPlayer = cw * 0.008;
 			this.bulletSpeed = cw * 0.008;					// default 0.006
 			this.score = 0;
+			this.powerupsTimer = {};						// handle to timer for each type of powerup (only powerups with duration) (used to cancel timer when another powerupof same type is picked up)
 
 			this.keybindings =
 			{
@@ -223,7 +228,7 @@ window.onload = function ()
 			this.type = type;
 			this.image = image;
 			this.duration = duration;			// if duration is 0, powerup doesn't time out
-			this.size = cw * 0.017;
+			this.size = powerupSize;
 		}
 	}
 
@@ -271,7 +276,7 @@ window.onload = function ()
 		playersStatesOnPause = [];				// saved states of players when pause was pressed; restore to players on unpause
 		powerups = [];							// array of spawned powerups
 		maxPowerups = 10;						// maximum number of powerups that can be on screen
-		powerupsInitDelay = 10000;				// delay before powerups begin spawning (in ms)
+		powerupsInitDelay = 1000;				// delay before powerups begin spawning (in ms) (default 10000)
 		powerupsSpawnDelay = 10000;				// delay before next powerup spawns (in ms)
 		powerupsMinDelay = 5000;				// minimum delay before next powerup spawns (in ms)
 		powerupsUpdateStarted = false;			// has function to start powerup spawning been called?
@@ -293,7 +298,9 @@ window.onload = function ()
 		]
 	
 		defaultPowerups = [						// types of powerups
-			{type: "clipSize", image: assets.images.ico_customizationNormal, duration: 0},
+			{ type: "clipSize", image: assets.images.ico_pwr_clipSize, duration: 0 },
+			{ type: "bulletSpeed", image: assets.images.ico_pwr_bulletSpeed, duration: 0 },
+			{ type: "shrink", image: assets.images.ico_pwr_shrink, duration: 5000 }
 		];
 
 		// player defaults (name, color, keybindings)
@@ -488,11 +495,13 @@ window.onload = function ()
 		{
 			if (e.keyCode == 27 && !gamePaused && !endgame)
 			{
-				PauseGame();
+				gamePaused = true;		// comment this if line below is not
+				//PauseGame();
 			}
 			else if (e.keyCode == 27 && gamePaused)
 			{
-				UnpauseGame();
+				gamePaused = false;		// comment this if line below is not
+				//UnpauseGame();
 			}
 		}
 
@@ -521,6 +530,7 @@ window.onload = function ()
 	{
 		assets = { images: {}, sounds: [] };
 
+		// load images
 		let images = 
 		{
 			ico_editNameNormal: "images/ico_editNameNormal.png",
@@ -532,10 +542,12 @@ window.onload = function ()
 			ico_PlusNormal: "images/ico_PlusNormal.png",
 			ico_PlusHover: "images/ico_PlusHover.png",
 			ico_xNormal: "images/ico_xNormal.png",
-			ico_xHover: "images/ico_xHover.png"
+			ico_xHover: "images/ico_xHover.png",
+			ico_pwr_clipSize: "images/ico_pwr_clipSize.png",
+			ico_pwr_bulletSpeed: "images/ico_pwr_bulletSpeed.png",
+			ico_pwr_shrink: "images/ico_pwr_shrink.png"
 
 		}
-		
 		for (let i in images)
 		{
 			let src = images[i];
@@ -543,6 +555,9 @@ window.onload = function ()
 			images[i].src = src;
 		}
 		assets.images = images;
+
+		// load sounds
+		
 	}
 
 	function CollisionCheckPlayers()
@@ -715,7 +730,8 @@ window.onload = function ()
 			// TODO: draw player name?
 
 			// player health bar
-			let barWidth = players[i].size * 1.3;
+			//let barWidth = players[i].size * 1.3;
+			let barWidth = cw * 0.023 * 1.3;
 			let barHeight = cw * 0.001;
 			ctx.beginPath();		// health bar background
 			ctx.rect(players[i].x - barWidth / 2, players[i].y - players[i].size / 2 - cw * 0.007, barWidth, barHeight);
@@ -979,10 +995,12 @@ window.onload = function ()
 
 	function DamagePlayer(playerIndex, damage)
 	{
+		// damage player
 		players[playerIndex].health -= damage;
 		if (players[playerIndex].health < 0)
 			players[playerIndex].health = 0;
 		
+		// flash damaged player (animate)
 		let oldColor = players[playerIndex].color;
 		let oldStrokeColor = players[playerIndex].strokeColor;
 		setTimeout(function () { players[playerIndex].color = oldColor; players[playerIndex].strokeColor = oldStrokeColor; }, 50);
@@ -1001,6 +1019,7 @@ window.onload = function ()
 
 		for (let i = 0; i < players.length; i++)
 		{
+			// save states
 			playersStatesOnPause[i] = {};
 			playersStatesOnPause[i].maxSpeed = players[i].maxSpeed;
 			playersStatesOnPause[i].maxDiagonalSpeed = players[i].maxDiagonalSpeed;
@@ -1213,6 +1232,12 @@ window.onload = function ()
 			
 			ReturnToMenuPrepare();
 		}
+
+		// not paused note
+		font = "300 " + cw * 0.012 + "px Open sans";
+		ctx.textAlign = "center";
+		DrawNeonText("(Game is not paused)", x + width / 2, y + height - cw * 0.005, font, "#777", 10);
+		ctx.textAlign = "left";
 	}
 
 	function ReturnToMenuPrepare()
@@ -1254,13 +1279,18 @@ window.onload = function ()
 
 	function powerupsUpdate()
 	{
-		// WIP
-		// include timed powerups (maybe like dim defeated is done)
-
-
-		// middle powerup for testing
-		//let powerup = new Powerup(cw / 2, ch / 2, "clipSize", powerupTypes[0].image, 0);
-		//powerups.push(powerup);
+		// all powerups for testing
+		/*for (let i = 0; i < defaultPowerups.length; i++)
+		{
+			for (let j = 0; j < 8; j++)
+			{
+				let x = cw * 0.2 + cw*0.08*j;
+				let y = cw * 0.1 + cw * 0.08 * i;
+				let powerup = new Powerup(x, y, defaultPowerups[i].type, defaultPowerups[i].image, defaultPowerups[i].duration);
+				powerups.push(powerup);
+			}
+		}*/
+		
 		
 		// if maximum number of spawned powerups isn't exceeded, spawn another one
 		if (powerups.length < maxPowerups)
@@ -1299,7 +1329,7 @@ window.onload = function ()
 			let powerupIndex = RandomInt(0, defaultPowerups.length - 1);		// choose random powerup from array of default powerups
 			let powerup = new Powerup(x, y, defaultPowerups[powerupIndex].type, defaultPowerups[powerupIndex].image, defaultPowerups[powerupIndex].duration);
 			powerups.push(powerup);
-		}	
+		}
 		
 		// set time for next powerup spawn
 		powerupsSpawnDelay -= 500;
@@ -1313,13 +1343,20 @@ window.onload = function ()
 	{
 		for (let i = 0; i < powerups.length; i++)
 		{
+			// powerup icon
 			ctx.shadowColor = "#aaa";
 			ctx.shadowBlur = 10;
 			let x = powerups[i].x - powerups[i].size / 2;
 			let y = powerups[i].y - powerups[i].size / 2;
 			ctx.drawImage(powerups[i].image, x, y, powerups[i].size, powerups[i].size);
 			ctx.shadowBlur = 0;
+			
+			// powerup border
+			let padding = cw * 0.002;
+			DrawNeonRect(x-padding/2, y-padding/2, powerups[i].size+padding, powerups[i].size+padding, "#333", "#999");
 		}
+
+		
 	}
 
 	function CollisionCheckPowerups()
@@ -1348,12 +1385,43 @@ window.onload = function ()
 		switch (type)
 		{
 			case "clipSize":
-			{
+			{ // increase clip size by 1
 				if (players[player].clipSize < players[player].maxClipSize)
 					players[player].clipSize++;
 					
 				break;	
 			}
+			case "bulletSpeed":
+			{ // increase bullet speed and recharge rate
+				let steps = 5; 			// number of powerups to pickup in order to get max upgrade
+				let p = new Player("temp", 0, 0, "fff", playerCustDefaults[0].keybindings);
+				let defaultFireRateDelay = p.fireRateDelay;
+				let defaultInitialRechargeDelay = p.initialRechargeDelay;	
+				let defaultRechargeDelay = p.rechargeDelay;
+			
+				if (players[player].fireRateDelay > players[player].minFireRateDelay)
+					players[player].fireRateDelay -= (defaultFireRateDelay - players[player].minFireRateDelay) / steps;
+			
+				if (players[player].initialRechargeDelay > players[player].minInitialRechargeDelay)
+					players[player].initialRechargeDelay -= (defaultInitialRechargeDelay - players[player].minInitialRechargeDelay) / steps;
+				
+				if (players[player].rechargeDelay > players[player].minRechargeDelay)
+					players[player].rechargeDelay -= (defaultRechargeDelay - players[player].minRechargeDelay) / steps;
+					
+				break;	
+			}
+			case "shrink":
+			{
+				let p = new Player("temp", 0, 0, "fff", playerCustDefaults[0].keybindings);
+				let defaultSize = p.size;
+				// if powerup of same type is picked up before previous expires, prolong powerup	
+				clearTimeout(players[player].powerupsTimer[type]);		// clear previous timers for setTimeout
+				let t = setTimeout(function () { players[player].size = defaultSize; }, duration);	// queue returning default value
+				players[player].powerupsTimer[type] = t;				// save timer handle
+				
+				if (players[player].size > players[player].minSize)
+					players[player].size *= 0.5;
+			}	
 			default:
 			{
 				break;
@@ -1374,7 +1442,7 @@ window.onload = function ()
 			players[i].SpawnBulletCheck();	// check if bullet can spawn (detect key-press; clip size and fire rate control)
 
 			// recharge bullets
-			if (players[i].clipAmmo < players[i].clipSize && new Date().getTime() >= players[i].ammoRechargeDate && !endgame && !gamePaused)
+			if (players[i].clipAmmo < players[i].clipSize && new Date().getTime() >= players[i].ammoRechargeDate && !endgame /*&& !gamePaused*/)
 			{
 				players[i].clipAmmo++;
 				players[i].ammoRechargeDate = new Date().getTime() + players[i].rechargeDelay;
