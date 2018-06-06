@@ -1199,7 +1199,7 @@ window.onload = function ()
 	{
 		gamePaused = true;
 
-		for (let i = 0; i < players.length; i++)
+		/*for (let i = 0; i < players.length; i++)
 		{
 			// save states
 			playersStatesOnPause[i] = {};
@@ -1226,14 +1226,14 @@ window.onload = function ()
 				players[i].bullets[j].xStep = 0;
 				players[i].bullets[j].yStep = 0;
 			}
-		}
+		}*/
 	}
 
 	function UnpauseGame()
 	{
 		gamePaused = false;
 
-		for (let i = 0; i < players.length; i++)
+		/*for (let i = 0; i < players.length; i++)
 		{
 			players[i].maxSpeed = playersStatesOnPause[i].maxSpeed;
 			players[i].maxDiagonalSpeed = playersStatesOnPause[i].maxDiagonalSpeed;
@@ -1246,7 +1246,7 @@ window.onload = function ()
 				players[i].bullets[j].xStep = playersStatesOnPause[i].bullets[j].xStep;
 				players[i].bullets[j].yStep = playersStatesOnPause[i].bullets[j].yStep;
 			}
-		}
+		}*/
 	}
 
 	function FreezeGame()
@@ -1553,8 +1553,6 @@ window.onload = function ()
 					else
 						redundantPowerup = false;
 					
-					
-					console.log(redundantPowerup);
 				}
 				while(redundantPowerup)
 
@@ -1925,6 +1923,13 @@ window.onload = function ()
 					mouseUpX = null;
 					players.splice(i, 1);
 					i--;
+					
+					// update starting x and y of all players
+					for (let j = 0; j < players.length; j++)
+					{ // playerCoordDefaults[m][n]; m = number of players in game, n = nth player of total m players
+						players[j].x = playerCoordDefaults[players.length-1][j].x;
+						players[j].y = playerCoordDefaults[players.length-1][j].y;
+					}
 				}
 			}
 			else
