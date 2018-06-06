@@ -38,7 +38,7 @@ window.onload = function ()
 			this.color = color;
 			this.health = 100;
 			this.size = cw * 0.023;
-			this.maxSpeed = cw * 0.005;						// default 0.004
+			this.maxSpeed = cw * 0.005;						// default 0.004 or 0.005
 			this.maxDiagonalSpeed = this.maxSpeed * 0.71;
 			this.acceleration = cw * 0.0015;				// between 0 and maxSpeed
 			this.decceleration = this.acceleration / 3;		// must be <= accelearation/2
@@ -132,7 +132,7 @@ window.onload = function ()
 			this.y += this.velY;
 
 			// player with map walls collsion check
-			let collisionResult = CollisionCheckInside(this.x, this.y, this.size, this.size, canvas.width / 2, canvas.height / 2, canvas.width, canvas.height);
+			let collisionResult = CollisionCheckInside(this.x, this.y, this.size + cw * 0.003, this.size + cw * 0.003, canvas.width / 2, canvas.height / 2, canvas.width, canvas.height);
 			if (collisionResult.x != null)
 			{
 				this.x = collisionResult.x;
@@ -208,7 +208,7 @@ window.onload = function ()
 			this.y = y;
 			this.xStep = xStep;
 			this.yStep = yStep;
-			this.size = cw * 0.006;
+			this.size = cw * 0.004;
 			this.damage = 10;
 		}
 	}
@@ -217,10 +217,10 @@ window.onload = function ()
 	main();
 	function main()
 	{
-		// initialize some variables
+		// initialize some global variables
 		Variables();
 
-		// TODO: loader
+		// TODO: loader?
 		LoadAssets();
 
 		// initialize players
@@ -242,7 +242,7 @@ window.onload = function ()
 			right: 39,
 			shoot: 96
 		}	
-		player = new Player("Red", cw - (cw * 0.08), canvas.height / 2, "#cc1100", keybindings);
+		player = new Player("Red", cw - (cw * 0.08), canvas.height / 2, "#aa1100", keybindings);
 		players.push(player);
 		keybindings =
 		{
@@ -252,7 +252,7 @@ window.onload = function ()
 			right: 76,
 			shoot: 16
 		}	
-		player = new Player("John", cw / 2, canvas.height / 2, "#00ff22", keybindings);
+		player = new Player("John", cw / 2, canvas.height / 2, "#009911", keybindings);
 		players.push(player);
 		/*players.push(player);
 		players.push(player);
@@ -263,14 +263,14 @@ window.onload = function ()
 		players.push(player);*/
 		
 		
-		//MenuUpdate();	// draw main menu; main menu will later call update
-		Update();		// main update fn which repeats itself every tick with requestAnimationFrame
+		MenuUpdate();	// draw main menu; main menu will later call update
+		//Update();		// main update fn which repeats itself every tick with requestAnimationFrame
 	
 		
 	}
 
 	// functions #####################################################################################################
-	function Variables()	// initialize and update
+	function Variables()	// initialize global variables
 	{
 		// general
 		cw = canvas.width;			// magic constant for converstion from pixels to multiples of canvas width is 0.0008; for cw * x, x = pixel_value * 0.0008
@@ -278,7 +278,7 @@ window.onload = function ()
 		restartKey = false;
 		gameState = "menu";
 		players = [];
-		assets = { images: [], sounds: [] };
+		assets = { images: {}, sounds: [] };
 		mouseX = null;
 		mouseY = null;
 		mouseUpX = null;
@@ -287,7 +287,6 @@ window.onload = function ()
 		// main menu
 		editingNameIndex = null;		// index of player whose name is beeing edited
 		upperCase = false;				// is shift pressed?
-
 	}
 
 	// TODO: text in FF; keyCode depricated?; test all in other  browsers	
@@ -317,7 +316,6 @@ window.onload = function ()
 			{
 				if (i == e.keyCode)
 				{
-					console.log(upperCase);
 					if (upperCase)
 						players[editingNameIndex].name += String.fromCharCode(e.keyCode);
 					else
@@ -329,6 +327,9 @@ window.onload = function ()
 			if (e.keyCode == 8)
 				players[editingNameIndex].name = players[editingNameIndex].name.slice(0, -1);
 			
+			// esc or enter
+			if (e.keyCode == 27 || e.keyCode == 13)
+				editingNameIndex = null;	
 		}
 
 		// upper case; is shift pressed?
@@ -370,7 +371,7 @@ window.onload = function ()
 
 	function LoadAssets()
 	{
-		let images = 
+		/*let images = 
 		[
 			"images/test.png",
 			"images/t2.png"
@@ -381,10 +382,33 @@ window.onload = function ()
 			let img = new Image();
 			img.src = images[i];
 			assets.images.push(img);
-		}	
+		}*/
 		
+		/*let images = {};
 
+		let ico_editNameNormal = new Image();
+		ico_editNameNormal.src = "images/ico_editNameNormal.png";
+		images["ico_editNameNormal"] = ico_editNameNormal;
 		
+		let ico_editNameHover = new Image();
+		ico_editNameHover.src = "images/ico_editNameHover.png";
+		images["ico_editNameHover"] = ico_editNameHover;*/
+		
+		// TODO: test quality with 32x32; change hover img to same
+		let images = 
+		{
+			ico_editNameNormal: "images/ico_editNameNormal.png",
+			ico_editNameHover: "images/ico_editNameHover.png"
+				
+		}
+		
+		for (let i in images)
+		{
+			let src = images[i];
+			images[i] = new Image();
+			images[i].src = src;
+		}
+		assets.images = images;
 	}
 
 	function CollisionCheckPlayers()
@@ -401,10 +425,10 @@ window.onload = function ()
 				}	
 				else
 				{ // detect collisions and push objects
-					let collisionResult = CollisionCheckOutside(players[i].x, players[i].y, players[i].size, players[i].size, players[j].x, players[j].y, players[j].size, players[j].size);
+					let collisionResult = CollisionCheckOutside(players[i].x, players[i].y, players[i].size + cw*0.003, players[i].size + cw*0.003, players[j].x, players[j].y, players[j].size, players[j].size);
 					if (collisionResult.x != null)
 					{
-						let collisionResult2 = CollisionCheckOutside(players[j].x, players[j].y, players[j].size, players[j].size, players[i].x, players[i].y, players[i].size, players[i].size);
+						let collisionResult2 = CollisionCheckOutside(players[j].x, players[j].y, players[j].size + cw*0.003, players[j].size + cw*0.003, players[i].x, players[i].y, players[i].size, players[i].size);
 						collisions.push({ cResult1: collisionResult, cResult2: collisionResult2, player1: i, player2: j });
 					}
 				}
@@ -521,7 +545,7 @@ window.onload = function ()
 
 	function DrawDebugText(text)
 	{
-		ctx.font = "20px Arial";
+		ctx.font = "300 20px Open sans";
 		ctx.fillStyle = "#eee";
 		ctx.fillText(text, 10, 20);
 	}
@@ -531,12 +555,6 @@ window.onload = function ()
 		for (let i = 0; i < players.length; i++)
 		{
 			// player body
-			/*ctx.beginPath();
-			ctx.rect(players[i].x - players[i].size / 2, players[i].y - players[i].size / 2, players[i].size, players[i].size);
-			ctx.fillStyle = players[i].color;
-			ctx.fill();
-			ctx.closePath();*/
-
 			DrawNeonRect(players[i].x - players[i].size / 2, players[i].y - players[i].size / 2, players[i].size, players[i].size, players[i].color);
 		}
 
@@ -551,6 +569,7 @@ window.onload = function ()
 			// TODO: draw player name
 
 			// player health bar
+			
 			let barWidth = players[i].size * 1.3;
 			let barHeight = cw * 0.001;
 			ctx.beginPath();		// health bar background
@@ -561,8 +580,11 @@ window.onload = function ()
 			ctx.beginPath();		// health bar foreground
 			ctx.rect(players[i].x - barWidth / 2, players[i].y - players[i].size / 2 - cw * 0.007, barWidth * players[i].health / 100, barHeight);
 			ctx.fillStyle = "#00ff33";
+			ctx.shadowColor = "#008811";
+			ctx.shadowBlur = 5;
 			ctx.fill();
 			ctx.closePath();
+			ctx.shadowBlur = 0;
 
 			// ammo clip
 			let ammoBoxSize = cw * 0.0032;
@@ -573,15 +595,18 @@ window.onload = function ()
 			for (let j = 0; j < players[i].clipSize; j++)
 			{
 				if ((j+1) <= players[i].clipAmmo)
-				{
+				{ // ammo clip foreground
 					ctx.beginPath();
 					ctx.rect(firstBoxX + j * (ammoBoxSize + ammoBoxSpacing), boxY, ammoBoxSize, ammoBoxSize);
 					ctx.fillStyle = "#ddd";
+					ctx.shadowColor = "#ccc";
+					ctx.shadowBlur = 3;
 					ctx.fill();
 					ctx.closePath();
+					ctx.shadowBlur = 0;
 				}
 				else
-				{
+				{ // ammo clip background
 					ctx.beginPath();
 					ctx.rect(firstBoxX + j * (ammoBoxSize + ammoBoxSpacing), boxY, ammoBoxSize, ammoBoxSize);
 					ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
@@ -619,16 +644,16 @@ window.onload = function ()
 		ctx.shadowBlur = 10;
 		ctx.strokeStyle = "rgba(" + r + "," + g + "," + b + ",0.2)";
 		ctx.lineWidth=7.5;
-		DrawRectangle(x, y, w, h, 1.5);
+		DrawRectangle(x, y, w, h, 1);
 		ctx.lineWidth=6;
-		DrawRectangle(x, y, w, h, 1.5);
+		DrawRectangle(x, y, w, h, 1);
 		ctx.lineWidth=4.5;
-		DrawRectangle(x, y, w, h, 1.5);
+		DrawRectangle(x, y, w, h, 1);
 		ctx.lineWidth=3;
-		DrawRectangle(x, y, w, h, 1.5);
-		ctx.strokeStyle= "#fff";
+		DrawRectangle(x, y, w, h, 1);
+		ctx.strokeStyle = "#fff";
 		ctx.lineWidth=1.5;
-		DrawRectangle(x, y, w, h, 1.5);
+		DrawRectangle(x, y, w, h, 1);
 		
 		ctx.shadowBlur = 0;
 	};
@@ -662,6 +687,8 @@ window.onload = function ()
 
 	function DrawBullets()
 	{
+		// TODO: try debug bullet flicker
+
 		for (let i = 0; i < players.length; i++)
 		{
 			for (let bullet of players[i].bullets)
@@ -669,8 +696,11 @@ window.onload = function ()
 				ctx.beginPath();
 				ctx.rect(bullet.x - bullet.size / 2, bullet.y - bullet.size / 2, bullet.size, bullet.size);
 				ctx.fillStyle = "#eee";
+				ctx.shadowColor = "#fff";
+				ctx.shadowBlur = 7;
 				ctx.fill();
 				ctx.closePath();
+				ctx.shadowBlur = 0;
 			}
 		}	
 	}
@@ -699,6 +729,7 @@ window.onload = function ()
 					j--;
 				}
 			}	
+			// TODO?: BUG: red player shooting just under blue on any edge of screen; if red is above upper bullet disappears
 
 			// check for collision with players for the remaining bullets
 			for (let j = 0; j < players[i].bullets.length; j++)
@@ -736,6 +767,7 @@ window.onload = function ()
 	function PauseGame()
 	{
 		// TODO: allow pause during midgame and resuming or going to menu
+
 		for (let i = 0; i < players.length; i++)
 		{
 			players[i].maxSpeed = 0;
@@ -760,7 +792,8 @@ window.onload = function ()
 
 	function endGameCheck()
 	{
-		// TODO: text shadow or box background
+		// TODO: remove dead players (but they must respawn next round)
+		// TODO: announce win and continue after x seconds; increment player score counter
 
 		let alivePlayers = 0;
 		let alivePlayerIndex;
@@ -793,6 +826,7 @@ window.onload = function ()
 
 			if (alivePlayers == 1)	// 1
 			{ // 1 winner
+				// TODO: change all to open sans (if it is used)
 				ctx.font = fontSizeWinner + "px Arial";
 				ctx.fillStyle = "#eee";
 				ctx.textAlign = "center";
@@ -848,94 +882,36 @@ window.onload = function ()
 		endGameCheck();
 
 
-		//setInterval(draw, 10);
+		//setInterval(Update, 1000);
 		requestAnimationFrame(Update);
 	}
 
+
 	// Main menu functions ##################################################################################################
-	function MenuUpdate()
+	function DrawButton(x, y, w, h, iconNormal, iconHover)
 	{
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-		// draw default players and settings (or read from file)
-		// on every change, update variables (and save to file)
-		// on press play, change mode and call Update()
-
-		/*
-			Usefull
-
-			//ctx.drawImage(assets.images[i], i*100, 0, 100, 100);
-
-			// get text size
-			//console.log(ctx.measureText(players[0].name));
-		*/
-
-		// make a button
-		
-		
-		// draw players for customization
-		let fontSizePlayer = cw * 0.03;
-		for (let i = 0; i < players.length; i++)
-		{
-			// name
-			let nameYoffset = cw * 0.1;
-			let nameYspacing = i * fontSizePlayer * 1.5;
-			let nameX = cw * 0.08;
-			let nameY = nameYoffset + nameYspacing;
-			ctx.font = fontSizePlayer + "px Arial";
-			ctx.fillStyle = players[i].color;
-			ctx.fillText(players[i].name, nameX, nameY);
-
-			// edit name button
-			let buttonSize = cw * 0.02;
-			let editNameButtonX = cw * 0.2;
-			let editNameButtonY = nameYoffset + nameYspacing - fontSizePlayer * 0.35 - buttonSize / 2;
-			ctx.beginPath();
-			ctx.rect(editNameButtonX, editNameButtonY, buttonSize, buttonSize);
-			ctx.fillStyle = "#eee";
-			ctx.fill();
-			ctx.closePath();
-			if (PointIsInside(mouseUpX, mouseUpY, editNameButtonX, editNameButtonY, buttonSize, buttonSize))
-			{
-				console.log("click " + i);
-				mouseUpX = null;
-				mouseUpX = null;
-				editingNameIndex = i;
-			}
-
-			
-			
-			
+		if (PointIsInside(mouseX, mouseY, x, y, w, h))
+		{ // mouse hover
+			ctx.shadowColor = "#fff";
+			ctx.shadowBlur = 10;
+			ctx.drawImage(iconHover, x, y, w, h);
+			ctx.shadowBlur = 0;
 		}
-		// draw cursor
-		for (let i = 0; i < players.length; i++)
-		{
-			if (editingNameIndex == i)
-			{
-				let nameYoffset = cw * 0.1;
-				let nameYspacing = i * fontSizePlayer * 1.5;
-				let nameX = cw * 0.08;
+		else
+		{ // normal mode
+			ctx.shadowColor = "#aaa";
+			ctx.shadowBlur = 10;
+			ctx.drawImage(iconNormal, x, y, w, h);
+			ctx.shadowBlur = 0;
+		}
 
-				let cursorHeight = cw * 0.026;
-				let cursorWidth = cw * 0.002;
-				let cursorX = nameX + ctx.measureText(players[i].name).width + cw * 0.002;
-				let cursorY = nameYoffset + nameYspacing - fontSizePlayer * 0.35 - cursorHeight / 2;
-				ctx.beginPath();
-				ctx.rect(cursorX, cursorY, cursorWidth, cursorHeight);
-				ctx.fillStyle = "#eee";
-				ctx.fill();
-				ctx.closePath();
-			}
-		}	
+		let clicked = false;
+		if (PointIsInside(mouseUpX, mouseUpY, x, y, w, h))
+		{ // detect mouse click
+			clicked = true;
+		}
 
-		
-
-		
-		if (gameState == "menu")
-		{
-			requestAnimationFrame(MenuUpdate);
-		}	
-		
+		return clicked;
 	}
 
 	function PointIsInside(a, b, x, y, w, h)
@@ -949,6 +925,108 @@ window.onload = function ()
 		else
 			return false;
 	}
+
+	function DrawPlayerNamesAndButtons()
+	{
+		let fontSizePlayer = cw * 0.028;
+		for (let i = 0; i < players.length; i++)
+		{
+			// name text
+			let nameYoffset = cw * 0.1;
+			let nameYspacing = i * fontSizePlayer * 1.5;
+			let nameX = cw * 0.08;
+			let nameY = nameYoffset + nameYspacing;
+			ctx.font = "300 " + fontSizePlayer + "px Open sans";
+			ctx.fillStyle ="#fff";
+			ctx.shadowColor = players[i].color;
+			ctx.shadowBlur = 20;
+			ctx.shadowOffsetX = nameX + 1000;
+			ctx.fillText(players[i].name, -1000, nameY);
+			ctx.fillText(players[i].name, -1000, nameY);
+			ctx.fillText(players[i].name, -1000, nameY);
+			ctx.shadowOffsetX = 0;
+			ctx.fillText(players[i].name, nameX, nameY);
+			ctx.shadowBlur = 0;
+			
+			// edit name button
+			let buttonSize = cw * 0.02;
+			let editNameButtonX = cw * 0.2;
+			let editNameButtonY = nameYoffset + nameYspacing - fontSizePlayer * 0.35 - buttonSize / 2;
+			// draw button and detect click
+			if (DrawButton(editNameButtonX, editNameButtonY, buttonSize, buttonSize, assets.images.ico_editNameNormal, assets.images.ico_editNameHover))
+			{ // click detected
+				mouseUpX = null;
+				mouseUpX = null;
+				editingNameIndex = i;
+			}
+
+			// edit color button
+			let editColorButtonX = editNameButtonX + buttonSize + cw * 0.01;
+			let editColorButtonY = editNameButtonY;
+			// draw button and detect click
+			if (DrawButton(editColorButtonX,editColorButtonY, buttonSize, buttonSize, assets.images.ico_editNameNormal, assets.images.ico_editNameHover))
+			{ // click detected
+				mouseUpX = null;
+				mouseUpX = null;
+				editingNameIndex = i; // change
+			}
+
+			
+		// end for loop through all players
+		}
+
+		// draw cursor (must be in separate loop)
+		for (let i = 0; i < players.length; i++)
+		{ // draw blinking cursor for player that is beeing edited (read player index from editingNameIndex)
+			if (editingNameIndex == i)
+			{
+				let nameYoffset = cw * 0.1;
+				let nameYspacing = i * fontSizePlayer * 1.5;
+				let nameX = cw * 0.08;
+
+				let cursorHeight = cw * 0.026;
+				let cursorWidth = cw * 0.0008;
+				let cursorX = nameX + ctx.measureText(players[i].name).width + cw * 0.004;
+				let cursorY = nameYoffset + nameYspacing - fontSizePlayer * 0.35 - cursorHeight / 2;
+				ctx.beginPath();
+				ctx.rect(cursorX, cursorY, cursorWidth, cursorHeight);
+				ctx.fillStyle = "#eee";
+				ctx.shadowColor = players[i].color;
+				ctx.fill();
+				ctx.shadowBlur = 10;
+				if (Math.floor(new Date().getTime() / 1000 % 2))
+				{
+					ctx.fill();
+					ctx.fill();
+					ctx.fill();
+					ctx.fill();
+				}	
+				ctx.closePath();
+			}
+		}
+		
+	}
+
+	function MenuUpdate()
+	{
+		// draw default players and settings (or read from file)
+		// on every change, update variables (and save to file)
+		// on press play, change mode and call Update()
+
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		
+		DrawPlayerNamesAndButtons();
+		
+
+		
+		if (gameState == "menu")
+		{
+			requestAnimationFrame(MenuUpdate);
+		}	
+		
+	}
+
+
 
 
 };
