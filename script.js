@@ -3,11 +3,15 @@ window.onload = function()
 	var canvas = document.getElementById("myCanvas");
 	var ctx = canvas.getContext("2d");
 	
-	canvas.width = screen.width-30;
-	canvas.height = screen.height-165;
+	//canvas.width = screen.width-30;
+	//canvas.height = screen.height-165;
+	canvas.width = window.innerWidth-20;
+	canvas.height = window.innerHeight - 5; // TODO: disable scrollbar or prevent it from apearing
 	
 	document.addEventListener("keydown", keyDownHandler, false);
 	document.addEventListener("keyup", keyUpHandler, false);
+	
+	
 
 	// variables
 		// general
@@ -18,36 +22,56 @@ window.onload = function()
 		var projectileOffsetFromSquare = 10;
 		var projectileSpeed = 10;		// default 10
 		var projectileDamage = 10;
+		var endgame = false;
+		var restartKey = false;
 	
 		// player 1
-		var square1X = 100;
-		var square1Y = canvas.height/2 - squareSize/2;
-		var moveRight = false;
-		var moveLeft = false;
-		var moveUp = false;
-		var moveDown = false;
-		var shoot1 = false;
-		var shoot1Enabled = true;
-		var projectiles1 = [];
-		var player1Health = 100;
+			// player
+			var square1X = 100;
+			var square1Y = canvas.height/2 - squareSize/2;
+			var player1Health = 100;
+			var player1Color = "#0055cc";
+			
+			// movement
+			var moveRight = false;
+			var moveLeft = false;
+			var moveUp = false;
+			var moveDown = false;
+			
+			// projectile
+			var shoot1 = false;
+			var shoot1Enabled = true;
+			var projectiles1 = [];
 	
 		// player 2
-		var square2X = canvas.width - 100;
-		var square2Y = canvas.height/2 - squareSize/2;
-		var moveRight2 = false;
-		var moveLeft2 = false;
-		var moveUp2 = false;
-		var moveDown2 = false;
-		var shoot2 = false;
-		var shoot2Enabled = true;
-		var projectiles2 = [];
-		var player2Health = 100;
+			// player
+			var square2X = canvas.width - 100;
+			var square2Y = canvas.height/2 - squareSize/2;
+			var player2Health = 100;
+			var player2Color = "#cc1100";
+
+			// movement
+			var moveRight2 = false;
+			var moveLeft2 = false;
+			var moveUp2 = false;
+			var moveDown2 = false;
+
+			// projectile
+			var shoot2 = false;
+			var shoot2Enabled = true;
+			var projectiles2 = [];
 	
 	// call main draw fn which repeats itself every tick with requestAnimationFrame
 	draw();
 	
 	function keyDownHandler(e)
 	{
+		// general
+		if(endgame == true && e.keyCode == 13)
+		{
+			restartKey = true;	
+		}
+		
 		// player 1
 		// d
 		if(e.keyCode == 68)
@@ -119,7 +143,7 @@ window.onload = function()
 			shoot2 = false;
 	}
 	
-	function drawText(text)
+	function drawDebugText(text)
 	{
 		ctx.font = "20px Arial";
 		ctx.fillStyle = "#eee";
@@ -131,7 +155,7 @@ window.onload = function()
 		// player 1
 		ctx.beginPath();
 		ctx.rect(square1X, square1Y, squareSize, squareSize);
-		ctx.fillStyle = "#0055cc";
+		ctx.fillStyle = player1Color;
 		ctx.fill();
 		ctx.closePath();
 		
@@ -144,7 +168,7 @@ window.onload = function()
 		// player 2
 		ctx.beginPath();
 		ctx.rect(square2X, square2Y, squareSize, squareSize);
-		ctx.fillStyle = "#cc1100";
+		ctx.fillStyle = player2Color;
 		ctx.fill();
 		ctx.closePath();
 		
@@ -229,39 +253,36 @@ window.onload = function()
 	function damagePlayer1(damage)
 	{
 		player1Health -= damage;
-		
-		if(player1Health <= 0)
-		{
-			player1Health = 0;
-			alert("Player 2 wins!!!")
-		}
 	}
 	
 	function damagePlayer2(damage)
 	{
 		player2Health -= damage;
-		
-		if(player2Health <= 0)
-		{
-			player2Health = 0;
-			alert("Player 1 wins!!!")
-		}
 	}
+	
+	function pause()
+	{
+		playerSpeed = 0;
+		projectileSpeed = 0;
+		shoot1Enabled = false;
+		shoot2Enabled = false;
+	}
+	
 	
 	function draw()
 	{ 
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		
-		// background
+		/*// background
 		ctx.beginPath();
 		ctx.rect(0, 0, canvas.width, canvas.height);
 		ctx.fillStyle = "#222";
 		ctx.fill();
-		ctx.closePath();
+		ctx.closePath();*/		// moved to css
 		
 		// drawing square and checks for position		// maybe edit checks; this code allows squares to exit screen by squareSize
 			// player 1
-			if(moveRight == true && square1X+squareSize < canvas.width)
+			if(moveRight == true && square1X+squareSize < (canvas.width/2 - squareSize))	// rem /2-squareSize to allow full screen movement
 				square1X += playerSpeed;
 			if(moveLeft == true && square1X > 0)
 				square1X -= playerSpeed;
@@ -273,7 +294,7 @@ window.onload = function()
 			// player 2
 			if(moveRight2 == true && square2X+squareSize < canvas.width)
 				square2X += playerSpeed;
-			if(moveLeft2 == true && square2X > 0)
+			if(moveLeft2 == true && square2X > canvas.width/2)		// change canvas.width/2 to 0 to allow full screen movement
 				square2X -= playerSpeed;
 			if(moveUp2 == true && square2Y > 0)
 				square2Y -= playerSpeed;
@@ -382,20 +403,59 @@ window.onload = function()
 		// end drawing projectiles
 		
 		
-		// TODO: end game check and restart
-		
-		
 		// debug text
-		//drawText("X: " + square1X.toFixed(2) + "   Y: " + square1Y.toFixed(2));
+		//drawDebugText("X: " + square1X.toFixed(2) + "   Y: " + square1Y.toFixed(2));
 		
 		
 		
+		// check for endgame
+		if(player1Health <= 0)
+		{
+			pause();
+			
+			ctx.font = "50px Arial";
+			ctx.fillStyle = "#eee";
+			ctx.fillText("Player 2 wins!!!", canvas.width/2 - 175, canvas.height/2);
+			
+			
+			endgame = true;
+		}
+		else if(player2Health <= 0)
+		{
+			pause();
+			
+			ctx.font = "50px Arial";
+			ctx.fillStyle = "#eee";
+			ctx.fillText("Player 1 wins!!!", canvas.width/2 - 175, canvas.height/2);
+			
+			endgame = true;
+		}
+		else if(player1Health <= 0 && player2Health <= 0)
+		{
+			pause();
+			
+			ctx.font = "50px Arial";
+			ctx.fillStyle = "#eee";
+			ctx.fillText("It's a tie !", canvas.width/2 - 100, canvas.height/2);
+			
+			endgame = true;
+		}
+		
+		if(endgame == true)
+		{
+			ctx.font = "20px Arial";
+			ctx.fillStyle = "#aaa";
+			ctx.fillText("(Press 'Enter' to reload)", canvas.width/2 - 110, canvas.height/2+40);
+		}
+		if(restartKey == true)
+		{
+			location.reload();
+		}
 		
 		
 		//setInterval(draw, 10);
 		requestAnimationFrame(draw);
 	}
-	
 	
 	
 };

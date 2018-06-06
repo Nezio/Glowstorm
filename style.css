@@ -1,4 +1,24 @@
+*
+{
+	margin:0;
+	padding:0;
+} /* to remove the top and left whitespace */
+
+html, body
+{
+	width:100%;
+	height:100%;
+} /* just to be sure these are full screen*/
+
 body
 {
-	
+    position: fixed; 
+    overflow-y: scroll;
+    width: 100%;
 }
+
+canvas
+{ 
+	display:block;
+	background: #222;
+} /* To remove the scrollbars */
