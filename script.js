@@ -52,6 +52,7 @@ window.onload = function ()
 			this.bullets = [];
 			this.bulletOffsetFromPlayer = cw * 0.008;
 			this.bulletSpeed = cw * 0.008;					// default 0.006
+			this.score = 0;
 
 			this.keybindings =
 			{
@@ -365,10 +366,10 @@ window.onload = function ()
 	function KeyDownHandler(e)
 	{
 		// general
-		if (endgame == true && e.keyCode == 13)
+		/*if (endgame == true && e.keyCode == 13)
 		{
 			restartKey = true;
-		}
+		}*/
 
 		// players keybindings (detect keypress during game)
 		for (let i = 0; i < players.length; i++)
@@ -643,7 +644,7 @@ window.onload = function ()
 	{
 		for (let i = 0; i < players.length; i++)
 		{
-			if (players[i].health <= 0)
+			if (players[i].health <= 0)			// skip if player has no more health
 				continue;
 			
 			// player body
@@ -652,7 +653,7 @@ window.onload = function ()
 
 		for (let i = 0; i < players.length; i++)
 		{ // this is separate from player body, so that health is always drawn on top
-			if (players[i].health <= 0)
+			if (players[i].health <= 0)			// skip if player has no more health
 				continue;
 			
 			// player health as text
@@ -879,7 +880,24 @@ window.onload = function ()
 				players[i].bullets[j].xStep = 0;
 				players[i].bullets[j].yStep = 0;
 			}
-		}	
+		}
+	}
+
+	function FreezeGame()
+	{
+		for (let i = 0; i < players.length; i++)
+		{
+			players[i].maxSpeed = 0;
+			players[i].maxDiagonalSpeed = 0;
+			players[i].canShoot = false;
+
+			// freeze all bullets
+			for (let j = 0; j < players[i].bullets.length; j++)
+			{
+				players[i].bullets[j].xStep = 0;
+				players[i].bullets[j].yStep = 0;
+			}
+		}
 	}
 
 	function UnpauseGame()
@@ -889,9 +907,41 @@ window.onload = function ()
 
 	}
 
+	// TODO: new game countdown
+
+	function RestartGame()
+	{		
+		let newPlayers = [];
+
+		for (let i = 0; i < players.length; i++)
+		{
+			// persist
+			let name = players[i].name;
+			let color = players[i].color;
+			let keybindings = players[i].keybindings;
+			let score = players[i].score;
+			
+			let player = new Player(name, 0, 0, color, keybindings);
+			player.keybindings = keybindings;
+			player.score = score;
+
+			newPlayers.push(player);
+		}
+
+		players = newPlayers;
+
+		// update(reset) x and y of all players
+		for (let i = 0; i < players.length; i++)
+		{ // playerCoordDefaults[m][n]; m = number of players in game, n = nth player of total m players
+			players[i].x = playerCoordDefaults[players.length-1][i].x;
+			players[i].y = playerCoordDefaults[players.length-1][i].y;
+		}
+
+		endgame = false;
+	}
+
 	function endGameCheck()
 	{
-		// TODO: remove dead players (but they must respawn next round)
 		// TODO: announce win (no dialog? animate?) and continue after x seconds; increment player score counter
 
 		let alivePlayers = 0;
@@ -907,9 +957,18 @@ window.onload = function ()
 		
 		if (alivePlayers <= 1)	// 1
 		{ // endgame
-			PauseGame();
-			endgame = true;
 
+			if (alivePlayers == 1)	// 1
+			{ // 1 winner
+				players[alivePlayerIndex].score++;	
+			}
+
+			endgame = true;
+			FreezeGame();
+			setTimeout(RestartGame, 3000);
+
+			// announce
+			/*
 			// background box
 			let boxW = cw * 0.4;
 			let boxH = cw * 0.2;
@@ -918,7 +977,6 @@ window.onload = function ()
 			ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
 			ctx.fill();
 			ctx.closePath();
-
 
 			let fontSizeWinner = cw * 0.035;
 			let fontSizeRestart = cw * 0.014;
@@ -947,7 +1005,8 @@ window.onload = function ()
 			if (restartKey == true)
 			{
 				location.reload();
-			}
+			}*/
+			// end announce
 		}	
 
 	}
@@ -960,6 +1019,17 @@ window.onload = function ()
 		ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
 		ctx.fill();
 		ctx.closePath();
+
+		// text
+		for (let i = 0; i < players.length; i++)
+		{
+			let x = cw / (players.length + 1) * (i+1);
+			let y = ch - cw * 0.01;
+			let text = players[i].name + ": " + players[i].score;
+			let font = "300 " + cw * 0.015 + "px Open sans";
+			ctx.textAlign = "center";
+			DrawNeonText(text, x, y, font, players[i].color, 10);
+		}
 	}
 
 	function Update()
@@ -972,7 +1042,7 @@ window.onload = function ()
 			players[i].SpawnBulletCheck();	// check if bullet can spawn (detect key-press; clip size and fire rate control)
 
 			// recharge bullets
-			if (players[i].clipAmmo < players[i].clipSize && new Date().getTime() >= players[i].ammoRechargeDate && !endgame)
+		if (players[i].clipAmmo < players[i].clipSize && new Date().getTime() >= players[i].ammoRechargeDate && !endgame)
 			{
 				players[i].clipAmmo++;
 				players[i].ammoRechargeDate = new Date().getTime() + players[i].rechargeDelay;
@@ -987,8 +1057,8 @@ window.onload = function ()
 
 		//console.log(players[0].bullets.length);
 
-
-		endGameCheck();
+		if (!endgame)
+			endGameCheck();
 
 		DrawScores();
 
@@ -1060,12 +1130,12 @@ window.onload = function ()
  		let player = new Player(name, 0, 0, color, keybindings);
 		players.push(player);
 
-		// TODO: update x and y of all players
+		// update x and y of all players
 		for (let i = 0; i < players.length; i++)
 		{ // playerCoordDefaults[m][n]; m = number of players in game, n = nth player of total m players
 			players[i].x = playerCoordDefaults[players.length-1][i].x;
 			players[i].y = playerCoordDefaults[players.length-1][i].y;
-		}	
+		}
 		
 	}
 
@@ -1420,7 +1490,7 @@ window.onload = function ()
 		let font = "300 " + cw * 0.04 + "px Open sans";
 		ctx.textAlign = "center";
 		DrawNeonText("NEON SQUARE BATTLES", cw / 2, cw * 0.07, font, "#15f");
-		DrawNeonText("NEON SQUARE BATTLES", cw / 2 + cw*0.004, cw * 0.07, font, "#15f", 500);
+		DrawNeonText("NEON SQUARE BATTLES", cw / 2 + cw*0.0035, cw * 0.07, font, "#15f", 500);
 		ctx.textAlign = "left";
 		
 
