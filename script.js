@@ -113,13 +113,14 @@ window.onload = function ()
 			this.x += this.velX;
 			this.y += this.velY;
 
-			// mapbox collsion check
+			// player with map walls collsion check
 			let collisionResult = CollisionCheckInside(this.x, this.y, this.size, this.size, canvas.width / 2, canvas.height / 2, canvas.width, canvas.height);
 			if (collisionResult.x != null)
 			{
 				this.x = collisionResult.x;
 				this.y = collisionResult.y;
 			}
+			
 		}
 
 
@@ -234,9 +235,46 @@ window.onload = function ()
 		}
 
 	}
+	
+	function CollisionCheck()
+	{
+		// player with player collision check
+		for (let i = 0; i < players.length; i++)
+		{
+
+			for (let j = 0; j < players.length; j++)
+			{
+				if (j == i)
+				{
+					continue;
+				}	
+				else
+				{
+					let collisionResult = CollisionCheckOutside(players[i].x, players[i].y, players[i].size, players[i].size, players[j].x, players[j].y, players[j].size, players[j].size);
+					if (collisionResult.x != null)
+					{
+						players[i].x = collisionResult.x;
+						players[i].y = collisionResult.y;
+					}
+				}
+			}
+
+		}
+		
+
+		let collisionResult = CollisionCheckOutside(players[0].x, players[0].y, players[0].size, players[0].size, players[1].x, players[1].y, players[1].size, players[1].size);
+		console.log(collisionResult);
+
+		ctx.beginPath();
+		ctx.rect(collisionResult.x, collisionResult.y, 3, 3);
+		ctx.fillStyle = "#f0f";
+		ctx.fill();
+		ctx.closePath();
+		
+	}
 
 	function CollisionCheckInside(x1, y1, w1, h1, x2, y2, w2, h2)
-	{ // check if box1 is inside of box2; coordinates assume center of boxes
+	{ // check if box1 is inside of box2; don't allow going outside of box2; coordinates assume center of boxes
 		let newX = null;
 		let newY = null;
 
@@ -256,8 +294,58 @@ window.onload = function ()
 			newY = y1;
 		}
 		if (x1 + w1 / 2 > x2 + w2 / 2)
-		{
+		{ // right
 			newX = x2 + w2 / 2 - w1 / 2;
+			newY = y1;
+		}
+
+		return ({ x: newX, y: newY });
+	}
+
+	function CollisionCheckOutside(x1, y1, w1, h1, x2, y2, w2, h2)
+	{ // check if box1 is outside of box2; don't allow clipping through box2; coordinates assume center of boxes
+		let newX = null;
+		let newY = null;
+
+		/*if ((y1 - h1 / 2 < y2 + h2 / 2) && (y1 - h1 / 2 > y2 - h2 / 2))
+		{ // up
+			newX = x1;
+			newY = y2 + h2 / 2 + h1 / 2;
+		}
+		if ((y1 + h1 / 2 > y2 - h2 / 2) && (y1 + h1 / 2 < y2 + h2 / 2))
+		{ // down
+			newX = x1;
+			newY = y2 + h2 / 2 - h1 / 2;
+		}
+		if ((x1 - w1 / 2 < x2 + w2 / 2) && (x1 - w1 / 2 > x2 - w2 / 2))
+		{ // left
+			newX = x2 + w2 / 2 + w1 / 2;
+			newY = y1;
+		}
+		if ((x1 + w1 / 2 > x2 - w2 / 2) && (x1 + w1 / 2 < x2 + w2 / 2))
+		{ // right
+			newX = x2 - w2 / 2 - w1 / 2;
+			newY = y1;
+		}*/
+
+		if ((y1 - h1 / 2 < y2 + h2 / 2) && (y1 - h1 / 2 > y2 - h2 / 2) && (((x1 - w1 / 2 < x2 + w2 / 2) && (x1 - w1 / 2 > x2 - w2 / 2)) || ((x1 + w1 / 2 > x2 - w2 / 2) && (x1 + w1 / 2 < x2 + w2 / 2))))
+		{ // up
+			newX = x1;
+			newY = y2 + h2 / 2 + h1 / 2;
+		}
+		if ((y1 + h1 / 2 > y2 - h2 / 2) && (y1 + h1 / 2 < y2 + h2 / 2) && (((x1 - w1 / 2 < x2 + w2 / 2) && (x1 - w1 / 2 > x2 - w2 / 2)) || ((x1 + w1 / 2 > x2 - w2 / 2) && (x1 + w1 / 2 < x2 + w2 / 2))))
+		{ // down
+			newX = x1;
+			newY = y2 + h2 / 2 - h1 / 2;
+		}
+		if ((x1 - w1 / 2 < x2 + w2 / 2) && (x1 - w1 / 2 > x2 - w2 / 2) && (((y1 - h1 / 2 < y2 + h2 / 2) && (y1 - h1 / 2 > y2 - h2 / 2)) || ((y1 + h1 / 2 > y2 - h2 / 2) && (y1 + h1 / 2 < y2 + h2 / 2))))
+		{ // left
+			newX = x2 + w2 / 2 + w1 / 2;
+			newY = y1;
+		}
+		if ((x1 + w1 / 2 > x2 - w2 / 2) && (x1 + w1 / 2 < x2 + w2 / 2) && (((y1 - h1 / 2 < y2 + h2 / 2) && (y1 - h1 / 2 > y2 - h2 / 2)) || ((y1 + h1 / 2 > y2 - h2 / 2) && (y1 + h1 / 2 < y2 + h2 / 2))))
+		{ // right
+			newX = x2 - w2 / 2 - w1 / 2;
 			newY = y1;
 		}
 
@@ -424,6 +512,8 @@ window.onload = function ()
 		{
 			players[i].MoveCheck();
 		}	
+
+		CollisionCheck();
 
 		DrawPlayers();
 
