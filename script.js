@@ -23,8 +23,9 @@ window.onload = function ()
 	// classes ########################################################################################################
 	class Player
 	{
-		constructor(x = 0, y = 0, color = "#f0f", keybindings = {})
+		constructor(name, x = 0, y = 0, color = "#f0f", keybindings = {})
 		{
+			this.name = name;
 			this.x = x;										// x and y are middle of player hitbox
 			this.y = y;
 			this.color = color;
@@ -44,7 +45,7 @@ window.onload = function ()
 			this.rechargeDelay = 5000;						// default 5000
 			this.bullets = [];
 			this.bulletOffsetFromPlayer = cw * 0.008;
-			this.bulletSpeed = cw * 0.006;					// default 0.006
+			this.bulletSpeed = cw * 0.009;					// default 0.006
 
 			this.keybindings =
 			{
@@ -159,7 +160,7 @@ window.onload = function ()
 					{
 						
 						break;	
-					}	
+					}
 					default:
 					{ // default firing style; quad fire
 						// up
@@ -168,12 +169,29 @@ window.onload = function ()
 						this.bullets.push(new Bullet(this.x, this.y + this.size / 2 + this.bulletOffsetFromPlayer, 0, this.bulletSpeed));
 						// left
 						this.bullets.push(new Bullet(this.x - this.size / 2 - this.bulletOffsetFromPlayer, this.y, -this.bulletSpeed, 0));
-						// left
+						// right
 						this.bullets.push(new Bullet(this.x + this.size / 2 + this.bulletOffsetFromPlayer, this.y, this.bulletSpeed, 0));
 
 						break;
 					}	
 				}
+
+				// delete bullets that spawned outside of bounds
+				let toSplice = [];
+				for (let i = 0; i < this.bullets.length; i++)
+				{
+					let b = this.bullets[i];
+					let collisionResult = CollisionCheckInside(b.x, b.y, b.size, b.size, canvas.width / 2, canvas.height / 2, canvas.width, canvas.height);
+					if (collisionResult.x != null)
+					{
+						this.bullets.splice(i, 1);
+						i--;
+					}
+				}
+				for (let i = 0; i < this.bullets.length; i++)
+				{
+					// nope ...
+				}	
 
 			}		
 
@@ -211,7 +229,7 @@ window.onload = function ()
 			right: 68,
 			shoot: 32
 		}	
-		let player = new Player(cw * 0.08, canvas.height / 2, "#0055cc", keybindings);
+		let player = new Player("Blue", cw * 0.08, canvas.height / 2, "#0055cc", keybindings);
 		players.push(player);
 		keybindings =
 		{
@@ -221,7 +239,7 @@ window.onload = function ()
 			right: 39,
 			shoot: 96
 		}	
-		player = new Player(cw - (cw * 0.08), canvas.height / 2, "#cc1100", keybindings);
+		player = new Player("Red", cw - (cw * 0.08), canvas.height / 2, "#cc1100", keybindings);
 		players.push(player);
 		/*keybindings =
 		{
@@ -327,24 +345,33 @@ window.onload = function ()
 
 		if (y1 - h1 / 2 < y2 - h2 / 2)
 		{ // up
-			newX = x1;
+			//newX = x1;
 			newY = y2 - h2 / 2 + h1 / 2;
 		}
 		if (y1 + h1 / 2 > y2 + h2 / 2)
 		{ // down
-			newX = x1;
+			//newX = x1;
 			newY = y2 + h2 / 2 - h1 / 2;
 		}
 		if (x1 - w1 / 2 < x2 - w2 / 2)
 		{ // left
 			newX = x2 - w2 / 2 + w1 / 2;
-			newY = y1;
+			//newY = y1;
 		}
 		if (x1 + w1 / 2 > x2 + w2 / 2)
 		{ // right
 			newX = x2 + w2 / 2 - w1 / 2;
-			newY = y1;
+			//newY = y1;
 		}
+
+		// fix for diagonal movement in corners of map
+		if (newX != null || newY != null)
+		{
+			if (newX == null)
+				newX = x1;
+			if (newY == null)
+				newY = y1;	
+		}	
 
 		return ({ x: newX, y: newY });
 	}
@@ -419,11 +446,15 @@ window.onload = function ()
 			ctx.fillStyle = players[i].color;
 			ctx.fill();
 			ctx.closePath();
+		}
 
+		for (let i = 0; i < numberOfPlayers; i++)
+		{ // this is separate from player body, so that health is always drawn on top
+			
 			// player health as text
-			ctx.font = "12px Arial";
+			/*ctx.font = "12px Arial";
 			ctx.fillStyle = "#eee";
-			ctx.fillText(players[i].health, players[i].x - 10, players[i].y - players[i].size / 2 - cw * 0.012);
+			ctx.fillText(players[i].health, players[i].x - 10, players[i].y - players[i].size / 2 - cw * 0.012);*/
 
 			// player health bar
 			let barWidth = players[i].size * 1.3;
@@ -459,45 +490,130 @@ window.onload = function ()
 	function UpdateBullets()
 	{
 		for (let i = 0; i < numberOfPlayers; i++)
-		{
+		{ // i is index of player who fired bullet
 			for (let j = 0; j < players[i].bullets.length; j++)
-			{
-				let bullet = players[i].bullets[j];		// use only for read
+			{ // j is index of bullet in question
+				let b = players[i].bullets[j];		// use only for read
 				
 				// update bullet position
 				players[i].bullets[j].x += players[i].bullets[j].xStep;
 				players[i].bullets[j].y += players[i].bullets[j].yStep;
 				
-				// check for collision, draw bullet last time and delete that bullet from array
-				let collisionResult = CollisionCheckInside(bullet.x, bullet.y, bullet.size, bullet.size, canvas.width / 2, canvas.height / 2, canvas.width, canvas.height);
+				// check for collision with wall, draw bullet last time and delete that bullet from array
+				let collisionResult = CollisionCheckInside(b.x, b.y, b.size, b.size, canvas.width / 2, canvas.height / 2, canvas.width, canvas.height);
 				if (collisionResult.x != null)
 				{
 					players[i].bullets[j].x = collisionResult.x;
 					players[i].bullets[j].y = collisionResult.y;
+					DrawBullets();
 
 					players[i].bullets.splice(j, 1);
-				}	
-
+					j--;
+				}
 			}	
+
+			// check for collision with players for the remaining bullets
+			for (let j = 0; j < players[i].bullets.length; j++)
+			{ // j is index of bullet in question
+				let b = players[i].bullets[j];		// use only for read
+
+				for (let k = 0; k < numberOfPlayers; k++)
+				{ // k is index of player who caught the bullet
+					collisionResult = CollisionCheckOutside(b.x, b.y, b.size, b.size, players[k].x, players[k].y, players[k].size, players[k].size);
+					if (collisionResult.x != null)
+					{
+						DamagePlayer(k, b.damage);
+
+						players[i].bullets[j].x = collisionResult.x;
+						players[i].bullets[j].y = collisionResult.y;
+						DrawBullets();
+
+						players[i].bullets.splice(j, 1);
+						j--;
+					}
+				}
+			}
+			
+			
 		}
 	}
 
-	function DamagePlayer1(damage)	// depricated
+	function DamagePlayer(playerIndex, damage)
 	{
-		player1Health -= damage;
+		players[playerIndex].health -= damage;
+		if (players[playerIndex].health < 0)
+			players[playerIndex].health = 0;
 	}
 
-	function DamagePlayer2(damage)	// depricated
+	function PauseGame()
 	{
-		player2Health -= damage;
+		// TODO: allow pause during midgame and resuming or going to menu
+		for (let i = 0; i < numberOfPlayers; i++)
+		{
+			players[i].maxSpeed = 0;
+			players[i].maxDiagonalSpeed = 0;
+			players[i].canShoot = false;
+
+			// freeze all bullets
+			for (let j = 0; j < players[i].bullets.length; j++)
+			{
+				players[i].bullets[j].xStep = 0;
+				players[i].bullets[j].yStep = 0;
+			}
+		}	
 	}
 
-	function Pause()
+	function UnpauseGame()
 	{
-		playerSpeed = 0;
-		projectileSpeed = 0;
-		shoot1Enabled = false;
-		shoot2Enabled = false;
+		// TODO ...
+		// if game is paused and not endgame
+
+	}
+
+	function endGameCheck()
+	{
+		let alivePlayers = 0;
+		let alivePlayerIndex;
+		for (let i = 0; i < numberOfPlayers; i++)
+		{
+			if (players[i].health > 0)
+			{
+				alivePlayers++;
+				alivePlayerIndex = i;
+			}
+		}
+		
+		if (alivePlayers <= 1)
+		{ // endgame
+			PauseGame();
+			endgame = true;
+
+			if (alivePlayers == 1)
+			{ // 1 winner
+				ctx.font = "50px Arial";
+				ctx.fillStyle = "#eee";
+				ctx.textAlign = "center";
+				ctx.fillText(players[alivePlayerIndex].name + " wins!", canvas.width / 2, canvas.height / 2);
+			}
+			if (alivePlayers == 0)
+			{ // no winners
+				ctx.font = "50px Arial";
+				ctx.fillStyle = "#eee";
+				ctx.textAlign = "center";
+				ctx.fillText("Good job, nobody wins!", canvas.width / 2, canvas.height / 2);
+			}
+
+			ctx.font = "20px Arial";
+			ctx.fillStyle = "#aaa";
+			ctx.textAlign = "center";
+			ctx.fillText("Press [Enter] to restart", canvas.width / 2, canvas.height / 2 + 40);
+
+			if (restartKey == true)
+			{
+				location.reload();
+			}
+		}	
+
 	}
 
 	function Update()
@@ -513,58 +629,14 @@ window.onload = function ()
 		CollisionCheckPlayers();			// player with player collisions
 		DrawPlayers();						// what do you think this does?
 
-		UpdateBullets();					// update bullet position; check for collisions
+		UpdateBullets();					// update bullet position; check for collisions; damage players
 		DrawBullets();
-		
+
+		//console.log(players[0].bullets.length);
 
 
+		endGameCheck();
 
-
-		/*
-		// check for endgame
-		if (player1Health <= 0)
-		{
-			Pause();
-
-			ctx.font = "50px Arial";
-			ctx.fillStyle = "#eee";
-			ctx.fillText("Player 2 wins!!!", canvas.width / 2 - 175, canvas.height / 2);
-
-
-			endgame = true;
-		}
-		else if (player2Health <= 0)
-		{
-			Pause();
-
-			ctx.font = "50px Arial";
-			ctx.fillStyle = "#eee";
-			ctx.fillText("Player 1 wins!!!", canvas.width / 2 - 175, canvas.height / 2);
-
-			endgame = true;
-		}
-		else if (player1Health <= 0 && player2Health <= 0)
-		{
-			Pause();
-
-			ctx.font = "50px Arial";
-			ctx.fillStyle = "#eee";
-			ctx.fillText("It's a tie !", canvas.width / 2 - 100, canvas.height / 2);
-
-			endgame = true;
-		}
-
-		if (endgame == true)
-		{
-			ctx.font = "20px Arial";
-			ctx.fillStyle = "#aaa";
-			ctx.fillText("(Press 'Enter' to reload)", canvas.width / 2 - 110, canvas.height / 2 + 40);
-		}
-		if (restartKey == true)
-		{
-			location.reload();
-		}
-		*/
 
 		//setInterval(draw, 10);
 		requestAnimationFrame(Update);
