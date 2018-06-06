@@ -25,12 +25,17 @@ window.onload = function ()
 	{
 		constructor(x = 0, y = 0, color = "#f0f", keybindings = {})
 		{
-			this.x = x;				// cw * 0.08;
-			this.y = y;				//canvas.height / 2 - squareSize / 2;
-			this.color = color;		//"#0055cc";
+			this.x = x;										// x and y are middle of player hitbox
+			this.y = y;
+			this.color = color;
 			this.health = 100;
-			this.size = cw * 0.023;		// x = 0.023 ~= 30px * 0.0008
-			this.speed = cw * 0.004;
+			this.size = cw * 0.023;
+			this.maxSpeed = cw * 0.005;						// default 0.004
+			this.maxDiagonalSpeed = this.maxSpeed * 0.71;
+			this.acceleration = cw * 0.0015;				// between 0 and maxSpeed
+			this.decceleration = this.acceleration / 3;		// must be <= accelearation/2
+			this.velX = 0;									// velocity, a vector, incudes direction AND speed
+			this.velY = 0;
 
 			this.keybindings =
 			{
@@ -45,21 +50,75 @@ window.onload = function ()
 
 		MoveCheck()
 		{
-			if(this.keybindings.up[1])
-			{
-				this.y -= this.speed;
+			let isMoving = false;
+			if (this.keybindings.up[1] || this.keybindings.down[1] || this.keybindings.left[1] || this.keybindings.right[1])
+				isMoving = true;
+
+			if (isMoving)
+			{	// key presses change velocity
+				if(this.keybindings.up[1])
+				{
+					this.velY -= this.acceleration;
+				}
+				if(this.keybindings.down[1])
+				{
+					this.velY += this.acceleration;
+				}
+				if(this.keybindings.left[1])
+				{
+					this.velX -= this.acceleration;
+				}
+				if(this.keybindings.right[1])
+				{
+					this.velX += this.acceleration;
+				}
 			}
-			if(this.keybindings.down[1])
+			//else
+			//{
+				// slow down gradually
+				this.velX -= this.decceleration * Math.sign(this.velX);
+				this.velY -= this.decceleration * Math.sign(this.velY);
+
+				// eliminate jumping around 0; fixed value of acceleration can't reduce it to 0
+				if (Math.abs(this.velX) < this.decceleration)
+					this.velX = 0;
+				if (Math.abs(this.velY) < this.decceleration)
+					this.velY = 0;
+			//}
+			
+			let maxVelocity = this.maxSpeed;
+			// check for diagonal movement and reduce speed
+			if
+			(
+				(this.keybindings.up[1] && this.keybindings.left[1]) ||
+				(this.keybindings.up[1] && this.keybindings.right[1]) ||
+				(this.keybindings.down[1] && this.keybindings.left[1]) ||
+				(this.keybindings.down[1] && this.keybindings.right[1])
+			)
 			{
-				this.y += this.speed;
-			}
-			if(this.keybindings.left[1])
+				maxVelocity = this.maxDiagonalSpeed;
+			}	
+
+			// max velocity test
+			if (this.velX < maxVelocity * (-1))
+				this.velX = maxVelocity * (-1);
+			if (this.velX > maxVelocity)
+				this.velX = maxVelocity;
+			if (this.velY < maxVelocity * (-1))
+				this.velY = maxVelocity * (-1);
+			if (this.velY > maxVelocity)
+				this.velY = maxVelocity;
+			
+			// update coordinates
+			this.x += this.velX;
+			this.y += this.velY;
+
+			// mapbox collsion check
+			let collisionResult = CollisionCheckInside(this.x, this.y, this.size, this.size, canvas.width / 2, canvas.height / 2, canvas.width, canvas.height);
+			if (collisionResult.x != null)
 			{
-				this.x -= this.speed;
-			}
-			if(this.keybindings.right[1])
-			{
-				this.x += this.speed;
+				this.x = collisionResult.x;
+				this.y = collisionResult.y;
 			}
 		}
 
@@ -174,6 +233,35 @@ window.onload = function ()
 			}
 		}
 
+	}
+
+	function CollisionCheckInside(x1, y1, w1, h1, x2, y2, w2, h2)
+	{ // check if box1 is inside of box2; coordinates assume center of boxes
+		let newX = null;
+		let newY = null;
+
+		if (y1 - h1 / 2 < y2 - h2 / 2)
+		{ // up
+			newX = x1;
+			newY = y2 - h2 / 2 + h1 / 2;
+		}
+		if (y1 + h1 / 2 > y2 + h2 / 2)
+		{ // down
+			newX = x1;
+			newY = y2 + h2 / 2 - h1 / 2;
+		}
+		if (x1 - w1 / 2 < x2 - w2 / 2)
+		{ // left
+			newX = x2 - w2 / 2 + w1 / 2;
+			newY = y1;
+		}
+		if (x1 + w1 / 2 > x2 + w2 / 2)
+		{
+			newX = x2 + w2 / 2 - w1 / 2;
+			newY = y1;
+		}
+
+		return ({ x: newX, y: newY });
 	}
 
 	function DrawDebugText(text)
@@ -339,7 +427,6 @@ window.onload = function ()
 
 		DrawPlayers();
 
-		
 		/*
 		// drawing square and checks for position		// maybe edit checks; this code allows squares to exit screen by squareSize
 		// player 1
