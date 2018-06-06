@@ -252,6 +252,8 @@ window.onload = function ()
 		mouseUpY = null;						// y position where last click was detected
 		scoresHeight = cw * 0.03;				// width of score panel; global because players should colide with it
 		winnerPlayer = null;					// number of player in players[] who won last game (not saved in next game; used for scores highlight)
+		gamePaused = false;						// is game paused?; used for drawing pause dialog
+		playersStatesOnPause = [];				// saved states of players when pause was pressed; restore to players on unpause 
 
 		// main menu
 		playerCustomizationIndex = null;		// index of player who is beeing customized in customization dialog; if !null dialog exists
@@ -452,6 +454,19 @@ window.onload = function ()
 			{
 				if (e.keyCode == keybinding[0])
 					keybinding[1] = false;
+			}
+		}
+
+		// pause dialog
+		if (gameState == "game")
+		{
+			if (e.keyCode == 27 && !gamePaused && !endgame)
+			{
+				PauseGame();
+			}
+			else if (e.keyCode == 27 && gamePaused)
+			{
+				UnpauseGame();
 			}
 		}
 
@@ -793,6 +808,71 @@ window.onload = function ()
 		} : null;
 	}
 
+	function rgbToHsv(r, g, b) {
+		r /= 255, g /= 255, b /= 255;
+	  
+		var max = Math.max(r, g, b), min = Math.min(r, g, b);
+		var h, s, v = max;
+	  
+		var d = max - min;
+		s = max == 0 ? 0 : d / max;
+	  
+		if (max == min) {
+			h = 0; // achromatic
+		} else {
+			switch (max) {
+				case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+				case g: h = (b - r) / d + 2; break;
+				case b: h = (r - g) / d + 4; break;
+			}
+	  
+			h /= 6;
+		}
+	  
+		return { h: h, s: s, v: v };
+	}
+	
+	function hsvToRgb(h, s, v)
+	{
+		var r, g, b;
+	  
+		var i = Math.floor(h * 6);
+		var f = h * 6 - i;
+		var p = v * (1 - s);
+		var q = v * (1 - f * s);
+		var t = v * (1 - (1 - f) * s);
+	  
+		switch (i % 6) {
+			case 0: r = v, g = t, b = p; break;
+			case 1: r = q, g = v, b = p; break;
+			case 2: r = p, g = v, b = t; break;
+			case 3: r = p, g = q, b = v; break;
+			case 4: r = t, g = p, b = v; break;
+			case 5: r = v, g = p, b = q; break;
+		}
+	  
+		return { r: r * 255, g: g * 255, b: b * 255 };
+	}
+
+	function hexToHsv(hex)
+	{
+		let rgb = hexToRgb(hex);
+		let hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+
+		return { h: hsv.h, s: hsv.s, v: hsv.v };
+	}
+
+	function hsvToHex(h, s, v)
+	{
+		let rgb = hsvToRgb(h, s, v);
+		rgb.r = Math.round(rgb.r);
+		rgb.g = Math.round(rgb.g);
+		rgb.b = Math.round(rgb.b);
+		let hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+
+		return hex;
+	}
+
 	function DrawBullets()
 	{
 		// TODO: try debug bullet flicker
@@ -846,6 +926,9 @@ window.onload = function ()
 
 				for (let k = 0; k < players.length; k++)
 				{ // k is index of player who caught the bullet
+					if (players[k].health <= 0)		// don't check if player has no health
+						continue;
+					
 					collisionResult = CollisionCheckOutside(b.x, b.y, b.size, b.size, players[k].x, players[k].y, players[k].size, players[k].size);
 					if (collisionResult.x != null)
 					{
@@ -874,10 +957,20 @@ window.onload = function ()
 
 	function PauseGame()
 	{
-		// TODO: allow pause during midgame and resuming or going to menu
+		gamePaused = true;
 
 		for (let i = 0; i < players.length; i++)
 		{
+			playersStatesOnPause[i] = {};
+			playersStatesOnPause[i].maxSpeed = players[i].maxSpeed;
+			playersStatesOnPause[i].maxDiagonalSpeed = players[i].maxDiagonalSpeed;
+			playersStatesOnPause[i].bullets = [];
+			let ammoRechargeDifference = players[i].ammoRechargeDate - new Date().getTime();
+			if (ammoRechargeDifference > 0)
+				playersStatesOnPause[i].ammoRechargeDifference = ammoRechargeDifference;
+			else
+				playersStatesOnPause[i].ammoRechargeDifference = 0;
+
 			players[i].maxSpeed = 0;
 			players[i].maxDiagonalSpeed = 0;
 			players[i].canShoot = false;
@@ -885,8 +978,32 @@ window.onload = function ()
 			// freeze all bullets
 			for (let j = 0; j < players[i].bullets.length; j++)
 			{
+				playersStatesOnPause[i].bullets[j] = {};
+				playersStatesOnPause[i].bullets[j].xStep = players[i].bullets[j].xStep;
+				playersStatesOnPause[i].bullets[j].yStep = players[i].bullets[j].yStep;
+
 				players[i].bullets[j].xStep = 0;
 				players[i].bullets[j].yStep = 0;
+			}
+		}
+	}
+
+	function UnpauseGame()
+	{
+		gamePaused = false;
+
+		for (let i = 0; i < players.length; i++)
+		{
+			players[i].maxSpeed = playersStatesOnPause[i].maxSpeed;
+			players[i].maxDiagonalSpeed = playersStatesOnPause[i].maxDiagonalSpeed;
+			players[i].canShoot = true;
+			players[i].ammoRechargeDate = new Date().getTime() + playersStatesOnPause[i].ammoRechargeDifference;
+
+			// unfreeze all bullets
+			for (let j = 0; j < players[i].bullets.length; j++)
+			{
+				players[i].bullets[j].xStep = playersStatesOnPause[i].bullets[j].xStep;
+				players[i].bullets[j].yStep = playersStatesOnPause[i].bullets[j].yStep;
 			}
 		}
 	}
@@ -906,13 +1023,6 @@ window.onload = function ()
 				players[i].bullets[j].yStep = 0;
 			}
 		}
-	}
-
-	function UnpauseGame()
-	{
-		// TODO ...
-		// if game is paused and not endgame
-
 	}
 
 	// TODO: new game countdown
@@ -968,55 +1078,14 @@ window.onload = function ()
 
 			if (alivePlayers == 1)	// 1
 			{ // 1 winner
-				setTimeout(function () { winnerPlayer = alivePlayerIndex; }, 2000);
-				setTimeout(function () { players[alivePlayerIndex].score++ }, 2000);
+				setTimeout(function () { winnerPlayer = alivePlayerIndex; }, 1000);
+				setTimeout(function () { players[alivePlayerIndex].score++ }, 1000);
 				setTimeout(function () { winnerPlayer = null; }, 4000);
 			}
 
 			endgame = true;
 			FreezeGame();
 			setTimeout(RestartGame, 4000);
-
-			// announce
-			/*
-			// background box
-			let boxW = cw * 0.4;
-			let boxH = cw * 0.2;
-			ctx.beginPath();
-			ctx.rect(canvas.width / 2 - boxW / 2, canvas.height / 2 - boxH / 2, boxW, boxH);
-			ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-			ctx.fill();
-			ctx.closePath();
-
-			let fontSizeWinner = cw * 0.035;
-			let fontSizeRestart = cw * 0.014;
-
-			if (alivePlayers == 1)	// 1
-			{ // 1 winner
-				// TODO: change all to open sans (if it is used)
-				ctx.font = fontSizeWinner + "px Arial";
-				ctx.fillStyle = "#eee";
-				ctx.textAlign = "center";
-				ctx.fillText(players[alivePlayerIndex].name + " wins!", canvas.width / 2, canvas.height / 2);
-			}
-			if (alivePlayers == 0)	// 0
-			{ // no winners
-				ctx.font = fontSizeWinner + "px Arial";
-				ctx.fillStyle = "#eee";
-				ctx.textAlign = "center";
-				ctx.fillText("Good job, nobody wins!", canvas.width / 2, canvas.height / 2);
-			}
-
-			ctx.font = fontSizeRestart + "px Arial";
-			ctx.fillStyle = "#aaa";
-			ctx.textAlign = "center";
-			ctx.fillText("Press [Enter] to restart", canvas.width / 2, canvas.height / 2 + 40);
-
-			if (restartKey == true)
-			{
-				location.reload();
-			}*/
-			// end announce
 		}	
 
 	}
@@ -1038,11 +1107,103 @@ window.onload = function ()
 			let text = players[i].name + ": " + players[i].score;
 			let font = "300 " + cw * 0.015 + "px Open sans";
 			ctx.textAlign = "center";
-			DrawNeonText(text, x, y, font, players[i].color, 10);
-
+			
+			if (players[i].health > 0)
+			{
+				DrawNeonText(text, x, y, font, players[i].color, 10);
+			}
+			else
+			{ // dim defeated
+				let hsv = hexToHsv(players[i].color);
+				hsv.s = hsv.s * 0.75;
+				hsv.v = hsv.v * 0.4;
+				let color = hsvToHex(hsv.h, hsv.s, hsv.v);
+				
+				DrawNeonText(text, x, y, font, color, 10, "#444");
+			}	
+			
 			if (i == winnerPlayer)
+			{ // highlight winner
 				DrawNeonText(text, x, y, font, players[i].color, 20);
+			}	
+				
 		}
+	}
+
+	function DrawPauseDialog()
+	{
+		// background tint
+		ctx.beginPath();
+		ctx.rect(0, 0, canvas.width, canvas.height);
+		ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+		ctx.fill();
+		ctx.closePath();
+
+		// dialog window
+		let width = cw * 0.25;
+		let height = cw * 0.15;
+		let x = canvas.width / 2 - width / 2;
+		let y = canvas.height / 2 - height / 2 - cw * 0.05;
+		DrawNeonRect(x, y, width, height, "#333");
+		ctx.fillStyle = "#222";
+		DrawRectangle(x, y, width, height, 3, true);
+
+		// draw Resume button
+		let btnW = cw * 0.14;
+		let btnH = cw * 0.03;
+		let btnX = x + width / 2 - btnW / 2;
+		let btnY = y + cw * 0.03;
+		DrawTextButton(btnX, btnY, btnW, btnH, "Resume");
+		if (PointIsInside(mouseUpX, mouseUpY, btnX, btnY, btnW, btnH))
+		{ // detect mouse click
+			mouseUpX = null;
+			mouseUpX = null;
+			
+			UnpauseGame();
+		}
+
+		// draw Main menu button
+		btnW = cw * 0.14;
+		btnH = cw * 0.03;
+		btnX = x + width / 2 - btnW / 2;
+		btnY = btnY + btnH + cw*0.025;
+		DrawTextButton(btnX, btnY, btnW, btnH, "Main menu");
+		if (PointIsInside(mouseUpX, mouseUpY, btnX, btnY, btnW, btnH))
+		{ // detect mouse click
+			mouseUpX = null;
+			mouseUpX = null;
+			
+			ReturnToMenuPrepare();
+		}
+	}
+
+	function ReturnToMenuPrepare()
+	{
+		gameState = "menu";
+		gamePaused = false;
+		endgame = false;
+
+		let newPlayers = [];
+		for (let i = 0; i < players.length; i++)
+		{
+			// persist
+			let name = players[i].name;
+			let color = players[i].color;
+			let keybindings = players[i].keybindings;
+			
+			let player = new Player(name, 0, 0, color, keybindings);
+			player.keybindings = keybindings;
+
+			newPlayers.push(player);
+		}
+		players = newPlayers;
+		// update(reset) x and y of all players
+		for (let i = 0; i < players.length; i++)
+		{ // playerCoordDefaults[m][n]; m = number of players in game, n = nth player of total m players
+			players[i].x = playerCoordDefaults[players.length-1][i].x;
+			players[i].y = playerCoordDefaults[players.length-1][i].y;
+		}
+
 	}
 
 	function Update()
@@ -1051,14 +1212,14 @@ window.onload = function ()
 
 		for (let i = 0; i < players.length; i++)
 		{
-			if (players[i].health <= 0)
+			if (players[i].health <= 0)		// don't check if player has no health
 				continue;
 			
 			players[i].MoveCheck();			// check if player can move (detect key-press; control player speed; wall collision)
 			players[i].SpawnBulletCheck();	// check if bullet can spawn (detect key-press; clip size and fire rate control)
 
 			// recharge bullets
-			if (players[i].clipAmmo < players[i].clipSize && new Date().getTime() >= players[i].ammoRechargeDate && !endgame)
+			if (players[i].clipAmmo < players[i].clipSize && new Date().getTime() >= players[i].ammoRechargeDate && !endgame && !gamePaused)
 			{
 				players[i].clipAmmo++;
 				players[i].ammoRechargeDate = new Date().getTime() + players[i].rechargeDelay;
@@ -1071,15 +1232,27 @@ window.onload = function ()
 		UpdateBullets();					// update bullet position; check for collisions; damage players
 		DrawBullets();
 
-		//console.log(players[0].bullets.length);
+		DrawScores();
+
+
+		
+
+
+		if (gamePaused)
+			DrawPauseDialog();	
 
 		if (!endgame)
 			endGameCheck();
 
-		DrawScores();
+		if (gameState == "menu")
+		{
+			MenuUpdate();
+		}
+		else if (gameState == "game")
+		{
+			requestAnimationFrame(Update);
+		}
 
-		//setInterval(Update, 1000);
-		requestAnimationFrame(Update);
 	}
 
 
@@ -1122,13 +1295,13 @@ window.onload = function ()
 			return false;
 	}
 
-	function DrawNeonText(text, x, y, font, color, shadowBlur = 20)
+	function DrawNeonText(text, x, y, font, color, shadowBlur = 20, fillColor = "#fff")
 	{
 		ctx.font = font;
 		ctx.shadowColor = color;
 		ctx.shadowBlur = shadowBlur;
 		ctx.shadowOffsetX = x + 10000;
-		ctx.fillStyle ="#fff";
+		ctx.fillStyle = fillColor;
 		ctx.fillText(text, -10000, y);
 		ctx.fillText(text, -10000, y);
 		ctx.fillText(text, -10000, y);
@@ -1559,7 +1732,7 @@ window.onload = function ()
 		}
 		else if (gameState == "game")
 		{
-			Update();	
+			Update();
 		}
 
 		
