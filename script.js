@@ -47,7 +47,7 @@ window.onload = function ()
 			this.maxClipSize = 7;
 			this.clipAmmo = this.clipSize;
 			this.canShoot = true;
-			this.fireMode = null;
+			this.fireMode = "default";
 			this.fireRateDelay = 500;						// fire rate delay in milliseconds; default 500
 			this.minFireRateDelay = 100;
 			this.initialRechargeDelay = 2000;				// default 2000; should be greater than fireRateDelay
@@ -60,6 +60,13 @@ window.onload = function ()
 			this.bulletSpeed = cw * 0.008;					// default 0.006
 			this.score = 0;
 			this.powerupsTimer = {};						// handle to timer for each type of powerup (only powerups with duration) (used to cancel timer when another powerupof same type is picked up)
+			this.rainbowBulletColor = "FF0055";				// used to go through hue for rainbow stream (DEPRICATED?)
+			this.bulletType = {								// default bullet type; changes with powerups
+				mode: "default",							// used for special cases, like rainbow stream
+				size : cw * 0.004,
+				damage : 10,
+				color : "#fff"
+			}
 
 			this.keybindings =
 			{
@@ -149,7 +156,6 @@ window.onload = function ()
 
 		SpawnBulletCheck()
 		{
-			// TODO: dont spawn if too close to a player; damage?
 			if (this.keybindings.shoot[1] && this.clipAmmo > 0 && this.canShoot && !endgame)
 			{
 				// disable shooting based on fire rate
@@ -164,24 +170,136 @@ window.onload = function ()
 				// set time to start ammo recharge
 				this.ammoRechargeDate = new Date().getTime() + this.initialRechargeDelay;
 
+
+				// set bullet type for dynamic bullets (such as rainbow stream)
+				if (this.bulletType.mode == "rainbowStream")
+				{
+					let hsv = hexToHsv(this.rainbowBulletColor);
+					let hex = hsvToHex(hsv.h + 0.05, hsv.s, hsv.v);
+					this.rainbowBulletColor = hex;
+					this.bulletType.color = hex;
+					//let color = this.rainbowBulletColor;
+				}	
+
 				// spawn bullet (add it to bullets array) based on fire mode
 				switch (this.fireMode)
 				{
 					case "octa":
 					{
+						let x, y, xStep, yStep;
+						// up
+						x = this.x;
+						y = this.y - this.size / 2 - this.bulletOffsetFromPlayer;
+						xStep = 0;
+						yStep = -this.bulletSpeed;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, this.bulletType.size, this.bulletType.damage, this.bulletType.color));
+						// down
+						x = this.x;
+						y = this.y + this.size / 2 + this.bulletOffsetFromPlayer;
+						xStep = 0;
+						yStep = this.bulletSpeed;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, this.bulletType.size, this.bulletType.damage, this.bulletType.color));
+						// left
+						x = this.x - this.size / 2 - this.bulletOffsetFromPlayer;
+						y = this.y;
+						xStep = -this.bulletSpeed;
+						yStep = 0;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, this.bulletType.size, this.bulletType.damage, this.bulletType.color));
+						// right
+						x = this.x + this.size / 2 + this.bulletOffsetFromPlayer;
+						y = this.y;
+						xStep = this.bulletSpeed;
+						yStep = 0;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, this.bulletType.size, this.bulletType.damage, this.bulletType.color));
 						
+						// up-right
+						x = this.x + this.size / 2 + this.bulletOffsetFromPlayer;
+						y = this.y - this.size / 2 - this.bulletOffsetFromPlayer;
+						xStep = this.bulletSpeed * 0.71;
+						yStep = -this.bulletSpeed * 0.71;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, this.bulletType.size, this.bulletType.damage, this.bulletType.color));
+						// up-left
+						x = this.x - this.size / 2 - this.bulletOffsetFromPlayer;
+						y = this.y - this.size / 2 - this.bulletOffsetFromPlayer;
+						xStep = -this.bulletSpeed * 0.71;
+						yStep = -this.bulletSpeed * 0.71;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, this.bulletType.size, this.bulletType.damage, this.bulletType.color));
+						// down-right
+						x = this.x + this.size / 2 + this.bulletOffsetFromPlayer;
+						y = this.y + this.size / 2 + this.bulletOffsetFromPlayer;
+						xStep = this.bulletSpeed * 0.71;
+						yStep = this.bulletSpeed * 0.71;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, this.bulletType.size, this.bulletType.damage, this.bulletType.color));
+						// down-left
+						x = this.x - this.size / 2 - this.bulletOffsetFromPlayer;
+						y = this.y + this.size / 2 + this.bulletOffsetFromPlayer;
+						xStep = -this.bulletSpeed * 0.71;
+						yStep = this.bulletSpeed * 0.71;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, this.bulletType.size, this.bulletType.damage, this.bulletType.color));
+							
+						break;
+					}
+					case "rainbowStreamnope":
+					{		
+						let x, y, xStep, yStep;
+						let hsv = hexToHsv(this.rainbowBulletColor);
+						let hex = hsvToHex(hsv.h + 0.05, hsv.s, hsv.v);
+						this.rainbowBulletColor = hex;	
+						let color = this.rainbowBulletColor;
+						// up
+						x = this.x;
+						y = this.y - this.size / 2 - this.bulletOffsetFromPlayer;
+						xStep = 0;
+						yStep = -this.bulletSpeed;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, 15, color));
+						// down
+						x = this.x;
+						y = this.y + this.size / 2 + this.bulletOffsetFromPlayer;
+						xStep = 0;
+						yStep = this.bulletSpeed;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, 15, color));
+						// left
+						x = this.x - this.size / 2 - this.bulletOffsetFromPlayer;
+						y = this.y;
+						xStep = -this.bulletSpeed;
+						yStep = 0;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, 15, color));
+						// right
+						x = this.x + this.size / 2 + this.bulletOffsetFromPlayer;
+						y = this.y;
+						xStep = this.bulletSpeed;
+						yStep = 0;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, 15, color));
+							
 						break;	
 					}
 					default:
 					{ // default firing style; quad fire
+						let x, y, xStep, yStep;
 						// up
-						this.bullets.push(new Bullet(this.x, this.y - this.size / 2 - this.bulletOffsetFromPlayer, 0, -this.bulletSpeed));
-						// down	
-						this.bullets.push(new Bullet(this.x, this.y + this.size / 2 + this.bulletOffsetFromPlayer, 0, this.bulletSpeed));
+						x = this.x;
+						y = this.y - this.size / 2 - this.bulletOffsetFromPlayer;
+						xStep = 0;
+						yStep = -this.bulletSpeed;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, this.bulletType.size, this.bulletType.damage, this.bulletType.color));
+						// down
+						x = this.x;
+						y = this.y + this.size / 2 + this.bulletOffsetFromPlayer;
+						xStep = 0;
+						yStep = this.bulletSpeed;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, this.bulletType.size, this.bulletType.damage, this.bulletType.color));
 						// left
-						this.bullets.push(new Bullet(this.x - this.size / 2 - this.bulletOffsetFromPlayer, this.y, -this.bulletSpeed, 0));
+						x = this.x - this.size / 2 - this.bulletOffsetFromPlayer;
+						y = this.y;
+						xStep = -this.bulletSpeed;
+						yStep = 0;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, this.bulletType.size, this.bulletType.damage, this.bulletType.color));
 						// right
-						this.bullets.push(new Bullet(this.x + this.size / 2 + this.bulletOffsetFromPlayer, this.y, this.bulletSpeed, 0));
+						x = this.x + this.size / 2 + this.bulletOffsetFromPlayer;
+						y = this.y;
+						xStep = this.bulletSpeed;
+						yStep = 0;
+						this.bullets.push(new Bullet(x, y, xStep, yStep, this.bulletType.size, this.bulletType.damage, this.bulletType.color));
 
 						break;
 					}	
@@ -213,14 +331,15 @@ window.onload = function ()
 
 	class Bullet
 	{ // default bullet
-		constructor(x, y, xStep, yStep)
+		constructor(x, y, xStep, yStep, size, damage, color)
 		{
 			this.x = x;
 			this.y = y;
 			this.xStep = xStep;
 			this.yStep = yStep;
-			this.size = cw * 0.004;
-			this.damage = 10;
+			this.size = size;
+			this.damage = damage;
+			this.color = color;
 		}
 	}
 
@@ -282,9 +401,9 @@ window.onload = function ()
 		powerups = [];							// array of spawned powerups
 		maxPowerups = 10;						// maximum number of powerups that can be on screen
 		powerupsDefaults = {
-			powerupsInitDelay : 1000,			// delay before powerups begin spawning (in ms) (default 10000)
-			powerupsSpawnDelay : 10000,			// delay before next powerup spawns (in ms)	(default 10000)
-			powerupsMinDelay : 5000				// minimum delay before next powerup spawns (in ms) (default 5000)
+			powerupsInitDelay : 5000,			// delay before powerups begin spawning (in ms) (default 10000)
+			powerupsSpawnDelay : 7000,			// delay before next powerup spawns (in ms)	(default 10000)
+			powerupsMinDelay : 4000				// minimum delay before next powerup spawns (in ms) (default 5000)
 		}	
 		powerupsInitDelay = powerupsDefaults.powerupsInitDelay;
 		powerupsSpawnDelay = powerupsDefaults.powerupsSpawnDelay;
@@ -311,11 +430,12 @@ window.onload = function ()
 		defaultPowerups = [						// types of powerups
 			{ type: "clipSize", image: assets.images.ico_pwr_clipSize, duration: 0 },
 			{ type: "bulletSpeed", image: assets.images.ico_pwr_bulletSpeed, duration: 0 },
-			{ type: "shrink", image: assets.images.ico_pwr_shrink, duration: 5000 }
+			{ type: "shrink", image: assets.images.ico_pwr_shrink, duration: 5000 },
+			{ type: "octaFire", image: assets.images.ico_pwr_octaFire, duration: 7000 },
+			{ type: "rainbowStream", image: assets.images.ico_pwr_rainbowStream, duration: 10000 }
 		];
 
 		// player defaults (name, color, keybindings)
-		// TODO: change some controls as shift + Num0 dont work at the same time
 		playerCustDefaults = [];
 		playerCustDefaults[0] = { name: "Player 1", color: colorPalette[1][0], keybindings:
 			{
@@ -332,7 +452,7 @@ window.onload = function ()
 				down: 40,
 				left: 37,
 				right: 39,
-				shoot: 110
+				shoot: 96
 			}
 		};
 		playerCustDefaults[2] = { name: "Player 3", color: colorPalette[1][4], keybindings:
@@ -407,9 +527,6 @@ window.onload = function ()
 		]// end playerCoordDefaults
 	}
 
-	// TODO: disable start if no players or 1 player
-	// TODO: exclamation point for unbound keys
-	// TODO: text in FF; keyCode depricated?; test all in other  browsers	
 	function KeyDownHandler(e)
 	{
 		// general
@@ -556,7 +673,9 @@ window.onload = function ()
 			ico_xHover: "images/ico_xHover.png",
 			ico_pwr_clipSize: "images/ico_pwr_clipSize.png",
 			ico_pwr_bulletSpeed: "images/ico_pwr_bulletSpeed.png",
-			ico_pwr_shrink: "images/ico_pwr_shrink.png"
+			ico_pwr_shrink: "images/ico_pwr_shrink.png",
+			ico_pwr_octaFire: "images/ico_pwr_octaFire.png",
+			ico_pwr_rainbowStream: "images/ico_pwr_rainbowStream.png"
 
 		}
 		for (let i in images)
@@ -752,8 +871,6 @@ window.onload = function ()
 			ctx.fillStyle = "#eee";
 			ctx.fillText(players[i].health, players[i].x - 10, players[i].y - players[i].size / 2 - cw * 0.012);*/
 
-			// TODO: draw player name?
-
 			// player health bar
 			//let barWidth = players[i].size * 1.3;
 			let barWidth = cw * 0.023 * 1.3;
@@ -823,6 +940,17 @@ window.onload = function ()
 		if (fill)
 			ctx.fill();	
 	}
+
+	function DrawArc(x, y, radius, startAngle, endAngle, antiClockwise = false, fill = false)
+	{
+		ctx.beginPath();
+		ctx.arc(x, y, radius, startAngle, endAngle, antiClockwise);
+		ctx.closePath();
+		ctx.stroke();
+
+		if (fill)
+			ctx.fill();	
+	}
 	
 	function DrawNeonRect(x, y, w, h, color, strokeColor = "#fff")
 	{
@@ -845,6 +973,32 @@ window.onload = function ()
 		ctx.strokeStyle = strokeColor;
 		ctx.lineWidth=1.5;
 		DrawRectangle(x, y, w, h, 1);
+		
+		ctx.globalCompositeOperation = "source-over";
+		ctx.shadowBlur = 0;
+	};
+
+	function DrawNeonArc(x, y, radius, startAngle, endAngle, color, strokeColor = "#fff", antiClockwise = false)
+	{
+		ctx.globalCompositeOperation = "lighter";
+
+		let r = hexToRgb(color).r;
+		let g = hexToRgb(color).g;
+		let b = hexToRgb(color).b;
+		ctx.shadowColor = color;
+		ctx.shadowBlur = 10;
+		ctx.strokeStyle = "rgba(" + r + "," + g + "," + b + ",0.2)";
+		ctx.lineWidth = 7.5;
+		DrawArc(x, y, radius, startAngle, endAngle, antiClockwise);
+		ctx.lineWidth=6;
+		DrawArc(x, y, radius, startAngle, endAngle, antiClockwise);
+		ctx.lineWidth=4.5;
+		DrawArc(x, y, radius, startAngle, endAngle, antiClockwise);
+		ctx.lineWidth=3;
+		DrawArc(x, y, radius, startAngle, endAngle, antiClockwise);
+		ctx.strokeStyle = strokeColor;
+		ctx.lineWidth=1.5;
+		DrawArc(x, y, radius, startAngle, endAngle, antiClockwise);
 		
 		ctx.globalCompositeOperation = "source-over";
 		ctx.shadowBlur = 0;
@@ -944,16 +1098,14 @@ window.onload = function ()
 
 	function DrawBullets()
 	{
-		// TODO: try debug bullet flicker
-
 		for (let i = 0; i < players.length; i++)
 		{
 			for (let bullet of players[i].bullets)
 			{
 				ctx.beginPath();
 				ctx.rect(bullet.x - bullet.size / 2, bullet.y - bullet.size / 2, bullet.size, bullet.size);
-				ctx.fillStyle = "#eee";
-				ctx.shadowColor = "#fff";
+				ctx.fillStyle = bullet.color;
+				ctx.shadowColor = bullet.color;
 				ctx.shadowBlur = 7;
 				ctx.fill();
 				ctx.closePath();
@@ -986,7 +1138,7 @@ window.onload = function ()
 					j--;
 				}
 			}	
-			// TODO?: BUG: red player shooting just under blue on any edge of screen; if red is above upper bullet disappears
+			// BUG?: red player shooting just under blue on any edge of screen; if red is above upper bullet disappears
 
 			// check for collision with players for the remaining bullets
 			for (let j = 0; j < players[i].bullets.length; j++)
@@ -1114,7 +1266,7 @@ window.onload = function ()
 		}
 	}
 
-	// TODO: new game countdown
+	// TODO?: new game countdown
 
 	function RestartGame()
 	{	
@@ -1191,6 +1343,9 @@ window.onload = function ()
 		ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
 		ctx.fill();
 		ctx.closePath();
+
+		// top line
+		DrawNeonRect(-100, ch - scoresHeight, cw + 200, scoresHeight + 100, "#252525", "#777");
 
 		// text
 		for (let i = 0; i < players.length; i++)
@@ -1282,6 +1437,7 @@ window.onload = function ()
 		gamePaused = false;
 		endgame = false;
 
+		// players
 		let newPlayers = [];
 		for (let i = 0; i < players.length; i++)
 		{
@@ -1303,6 +1459,13 @@ window.onload = function ()
 			players[i].y = playerCoordDefaults[players.length-1][i].y;
 		}
 
+		// powerups
+		powerups = [];
+		powerupsInitDelay = powerupsDefaults.powerupsInitDelay;
+		powerupsSpawnDelay = powerupsDefaults.powerupsSpawnDelay;
+		powerupsMinDelay = powerupsDefaults.powerupsMinDelay;
+		powerupsUpdateStarted = false;
+
 	}
 
 	function RandomInt(min, max)
@@ -1313,10 +1476,10 @@ window.onload = function ()
 		return Math.floor(Math.random() * (max - min + 1)) + min;
 	}
 
-	function powerupsUpdate()
+	function PowerupsUpdate()
 	{
 		// all powerups for testing
-		for (let i = 0; i < defaultPowerups.length; i++)
+		/*for (let i = 0; i < defaultPowerups.length; i++)
 		{
 			for (let j = 0; j < 8; j++)
 			{
@@ -1325,53 +1488,93 @@ window.onload = function ()
 				let powerup = new Powerup(x, y, defaultPowerups[i].type, defaultPowerups[i].image, defaultPowerups[i].duration);
 				powerups.push(powerup);
 			}
-		}
-		
-		// if maximum number of spawned powerups isn't exceeded, spawn another one
-		/*if (powerups.length < maxPowerups)
-		{
-			let x, y;
-			let collision;
-			do
-			{
-				x = RandomInt(cw * 0.02, cw - cw * 0.02);
-				y = RandomInt(cw * 0.02, ch - cw * 0.02 - scoresHeight);
-				
-				// collision check with other powerups (don't spawn powerup on top of another powerup)
-				collision = false;
-				for (let j = 0; j < powerups.length; j++)
-				{
-					let collisionResult = CollisionCheckOutside(x, y, powerupSize, powerupSize, powerups[j].x, powerups[j].y, powerupSize*10, powerupSize*10);
-					if (collisionResult.x != null)
-					{ // collision detected
-						collision = true;
-					}
-				}
-
-				// collsion with players (don't spawn powerup on top of player)
-				for (let j = 0; j < players.length; j++)
-				{
-					let collisionResult = CollisionCheckOutside(x, y, powerupSize, powerupSize, players[j].x, players[j].y, players[j].size*10, players[j].size*10);
-					if (collisionResult.x != null)
-					{ // collision detected
-						collision = true;
-					}
-				}
-			}
-			while (collision);
-
-			// create random powerup
-			let powerupIndex = RandomInt(0, defaultPowerups.length - 1);		// choose random powerup from array of default powerups
-			let powerup = new Powerup(x, y, defaultPowerups[powerupIndex].type, defaultPowerups[powerupIndex].image, defaultPowerups[powerupIndex].duration);
-			powerups.push(powerup);
 		}*/
 		
-		// set time for next powerup spawn
-		powerupsSpawnDelay -= 500;
-		if (powerupsSpawnDelay < powerupsMinDelay)
-			powerupsSpawnDelay = powerupsMinDelay;	
+		// if maximum number of spawned powerups isn't exceeded, spawn another one
+		if (powerups.length < maxPowerups && gameState == "game")
+		{
+			for (let i = 0; i < 2; i++)
+			{ // spawn 2 powerups every time
+				let x, y;
+				let collision;
+				do
+				{
+					x = RandomInt(cw * 0.02, cw - cw * 0.02);
+					y = RandomInt(cw * 0.02, ch - cw * 0.02 - scoresHeight);
+					
+					// collision check with other powerups (don't spawn powerup on top of another powerup)
+					collision = false;
+					for (let j = 0; j < powerups.length; j++)
+					{
+						let collisionResult = CollisionCheckOutside(x, y, powerupSize, powerupSize, powerups[j].x, powerups[j].y, powerupSize*10, powerupSize*10);
+						if (collisionResult.x != null)
+						{ // collision detected
+							collision = true;
+						}
+					}
+
+					// collsion with players (don't spawn powerup on top of player)
+					for (let j = 0; j < players.length; j++)
+					{
+						let collisionResult = CollisionCheckOutside(x, y, powerupSize, powerupSize, players[j].x, players[j].y, players[j].size*10, players[j].size*10);
+						if (collisionResult.x != null)
+						{ // collision detected
+							collision = true;
+						}
+					}
+				}
+				while (collision);
+
+				// choose random powerup type from array of default powerups
+				let powerupIndex;
+				let redundantPowerup = false;
+				do
+				{
+					powerupIndex = RandomInt(0, defaultPowerups.length - 1);
+					
+					// don't spawn upgrade powerups if all players have them maxed
+					let allClipSizeMaxed = true;				// assume true
+					let allBulletSpeedMaxed = true;
+					for (let j = 0; j < players.length; j++)
+					{
+						// clip size
+						if (players[j].clipSize < players[j].maxClipSize)	// if any player isn't maxed, then not all are maxed
+							allClipSizeMaxed = false;
+						// bullet speed  // if any player isn't at min, then not all are maxed
+						if ((players[j].fireRateDelay > players[j].minFireRateDelay) ||
+							(players[j].initialRechargeDelay > players[j].minInitialRechargeDelay) ||
+							(players[j].rechargeDelay > players[j].minRechargeDelay))
+								allBulletSpeedMaxed = false;
+					}
+					if (allClipSizeMaxed && defaultPowerups[powerupIndex].type == "clipSize") // if all players have this powerup at max, it's redundant
+						redundantPowerup = true;
+					else if (allBulletSpeedMaxed && defaultPowerups[powerupIndex].type == "bulletSpeed") // if all players have this powerup at max, it's redundant
+						redundantPowerup = true;
+					else
+						redundantPowerup = false;
+					
+					
+					console.log(redundantPowerup);
+				}
+				while(redundantPowerup)
+
+				// create random powerup
+				let powerup = new Powerup(x, y, defaultPowerups[powerupIndex].type, defaultPowerups[powerupIndex].image, defaultPowerups[powerupIndex].duration);
+				powerups.push(powerup);
+			}
+			
+		}
 		
-		//setTimeout(powerupsUpdate, powerupsSpawnDelay);
+		// set time for next powerup spawn
+		if (gameState == "game")
+		{
+			powerupsSpawnDelay -= 500;
+			if (powerupsSpawnDelay < powerupsMinDelay)
+				powerupsSpawnDelay = powerupsMinDelay;	
+		
+			setTimeout(PowerupsUpdate, powerupsSpawnDelay);
+		}	
+		
 	}
 
 	function DrawPowerups()
@@ -1388,7 +1591,15 @@ window.onload = function ()
 			
 			// powerup border
 			let padding = cw * 0.002;
-			DrawNeonRect(x-padding/2, y-padding/2, powerups[i].size+padding, powerups[i].size+padding, "#333", "#999");
+			if (powerups[i].type == "clipSize" || powerups[i].type == "bulletSpeed")
+			{
+				let arcX = powerups[i].x;
+				let arcY = powerups[i].y;
+				let r = powerups[i].size / 2 + padding;
+				DrawNeonArc(arcX, arcY, r, 0, 2 * Math.PI, "#333", "#999");
+			}
+			else
+				DrawNeonRect(x - padding / 2, y - padding / 2, powerups[i].size + padding, powerups[i].size + padding, "#333", "#999");
 		}
 
 		
@@ -1419,34 +1630,20 @@ window.onload = function ()
 
 	}
 
-	function DrawMaxedNotification(player)
-	{
-		let x = players[player].x + players[player].size / 2;
-		let y = players[player].y - players[player].size / 2;
-		
-
-		font = "300 " + cw * 0.012 + "px Open sans";
-		ctx.textAlign = "left";
-		DrawNeonText("Max", x , y, font, "#777", 10);
-		
-	}
-
 	function ApplyPowerup(player, type, duration)
 	{ // apply powerup of given type and duration to the player
 		switch (type)
 		{
 			case "clipSize":
 			{ // increase clip size by 1
-				if (players[player].clipSize < 4/*players[player].maxClipSize*/)
+				if (players[player].clipSize < players[player].maxClipSize)
 					players[player].clipSize++;
-				else
-					DrawMaxedNotification(player);
 					
 				break;	
 			}
 			case "bulletSpeed":
 			{ // increase bullet speed and recharge rate
-				let steps = 5; 			// number of powerups to pickup in order to get max upgrade
+				let steps = 3; 			// number of powerups to pickup in order to get max upgrade
 				let p = new Player("temp", 0, 0, "fff", playerCustDefaults[0].keybindings);
 				let defaultFireRateDelay = p.fireRateDelay;
 				let defaultInitialRechargeDelay = p.initialRechargeDelay;	
@@ -1461,7 +1658,7 @@ window.onload = function ()
 				if (players[player].rechargeDelay > players[player].minRechargeDelay)
 					players[player].rechargeDelay -= (defaultRechargeDelay - players[player].minRechargeDelay) / steps;
 					
-				break;	
+				break;
 			}
 			case "shrink":
 			{
@@ -1474,12 +1671,51 @@ window.onload = function ()
 				
 				if (players[player].size > players[player].minSize)
 					players[player].size *= 0.5;
-			}	
+					
+				break;
+			}
+			case "octaFire":
+			{
+				let p = new Player("temp", 0, 0, "fff", playerCustDefaults[0].keybindings);
+				let defaultFireMode = p.fireMode;
+				// if powerup of same type is picked up before previous expires, prolong powerup	
+				clearTimeout(players[player].powerupsTimer[type]);		// clear previous timers for setTimeout
+				let t = setTimeout(function () { players[player].fireMode = defaultFireMode; }, duration);	// queue returning default value
+				players[player].powerupsTimer[type] = t;				// save timer handle
+				
+				players[player].fireMode = "octa";
+				
+				break;
+			}
+			case "rainbowStream":
+			{	
+				let p = new Player("temp", 0, 0, "fff", playerCustDefaults[0].keybindings);
+				let defaultBulletType = CloneObject(p.bulletType);
+				// if powerup of same type is picked up before previous expires, prolong powerup	
+				clearTimeout(players[player].powerupsTimer[type]);		// clear previous timers for setTimeout
+				let t = setTimeout(function () { players[player].bulletType = CloneObject(defaultBulletType); }, duration);	// queue returning default value
+				players[player].powerupsTimer[type] = t;				// save timer handle
+				
+				players[player].bulletType.mode = "rainbowStream";
+				players[player].bulletType.damage = 12.5;
+				
+				break;
+			}
 			default:
 			{
 				break;
 			}	
 		}
+	}
+	
+	function CloneObject(object)
+	{
+		let newObject = {};
+		for (let o of Object.entries(object))
+		{
+			newObject[o[0]] = o[1];
+		}
+		return newObject;
 	}
 
 	function Update()
@@ -1514,7 +1750,7 @@ window.onload = function ()
 		if (!powerupsUpdateStarted)
 		{
 			powerupsUpdateStarted = true;
-			setTimeout(powerupsUpdate, powerupsInitDelay);
+			setTimeout(PowerupsUpdate, powerupsInitDelay);
 		}
 
 		DrawPowerups();
@@ -1910,7 +2146,7 @@ window.onload = function ()
 			
 	}
 
-	function DrawTextButton(x, y, w, h, text, enabled = true)
+	function DrawTextButton(x, y, w, h, text, enabled = true, textShadowColor = "#999", textColor = "#fff", borderColor = "#222", borderStrokeColor = "#fff")
 	{
 		let borderW = w;
 		let borderH = h;
@@ -1922,23 +2158,20 @@ window.onload = function ()
 		let textX = borderX + borderW / 2;
 		let textY = borderY + borderH / 2 + buttonFontSize * 0.35;
 
-		if (PointIsInside(mouseX, mouseY, borderX, borderY, borderW, borderH) && enabled)
-		{ // mouse hover
-			DrawNeonRect(borderX, borderY, borderW, borderH, "#222");
-			DrawNeonRect(borderX, borderY, borderW, borderH, "#222");
-			
-			ctx.textAlign = "center";
-			DrawNeonText(txt, textX, textY, buttonFont, "#999", 10);
-			ctx.textAlign = "left";
-		}
-		else
-		{ // normal mode
-			DrawNeonRect(borderX, borderY, borderW, borderH, "#222");
-		}
+		// base draw (default)
+		DrawNeonRect(borderX, borderY, borderW, borderH, borderColor, borderStrokeColor);
 		ctx.textAlign = "center";
-		DrawNeonText(txt, textX, textY, buttonFont, "#999", 10);
+		DrawNeonText(txt, textX, textY, buttonFont, textShadowColor, 10, textColor);
 		ctx.textAlign = "left";
 
+		if (PointIsInside(mouseX, mouseY, borderX, borderY, borderW, borderH) && enabled)
+		{ // mouse hover
+			DrawNeonRect(borderX, borderY, borderW, borderH, borderColor, borderStrokeColor);
+			ctx.textAlign = "center";
+			DrawNeonText(txt, textX, textY, buttonFont, textShadowColor, 10, textColor);
+			ctx.textAlign = "left";
+		}
+		
 		let clicked = false;
 		if (PointIsInside(mouseUpX, mouseUpY, x, y, w, h))
 		{ // detect mouse click
@@ -1968,20 +2201,25 @@ window.onload = function ()
 		DrawNeonText("NEON SQUARE BATTLES", cw / 2 + cw * 0.0037, cw * 0.07, font, "#15f", 0);
 		ctx.textAlign = "left";
 		
-
 		// Start button
 		let btnW = cw * 0.12;
 		let btnH = cw * 0.03;
 		let btnX = canvas.width - canvas.width / 4 - btnW / 2;			// 3/4 of canvas width
 		let btnY = canvas.height - cw * 0.11;
-		DrawTextButton(btnX, btnY, btnW, btnH, "Start");
-		if (PointIsInside(mouseUpX, mouseUpY, btnX, btnY, btnW, btnH))
-		{ // detect mouse click
-			mouseUpX = null;
-			mouseUpX = null;
-			
-			gameState = "game";
+		if (players.length >= 2)
+		{ // if there is enough players, draw button normally
+			DrawTextButton(btnX, btnY, btnW, btnH, "Start");
+			if (PointIsInside(mouseUpX, mouseUpY, btnX, btnY, btnW, btnH))
+			{ // detect mouse click
+				mouseUpX = null;
+				mouseUpX = null;
+				
+				gameState = "game";
+			}
 		}
+		else
+			DrawTextButton(btnX, btnY, btnW, btnH, "Start", false, "#555", "#888", "#222", "#555");
+		
 
 		// preview panel (placeholder)
 		for (let i = 0; i < players.length; i++)
