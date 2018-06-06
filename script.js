@@ -456,24 +456,49 @@ window.onload = function ()
 			ctx.fillStyle = "#eee";
 			ctx.fillText(players[i].health, players[i].x - 10, players[i].y - players[i].size / 2 - cw * 0.012);*/
 
+			// TODO: draw player name
+
 			// player health bar
 			let barWidth = players[i].size * 1.3;
 			let barHeight = cw * 0.001;
 			ctx.beginPath();		// health bar background
-			ctx.rect(players[i].x - barWidth / 2, players[i].y - players[i].size / 2 - cw * 0.01, barWidth, barHeight);
+			ctx.rect(players[i].x - barWidth / 2, players[i].y - players[i].size / 2 - cw * 0.007, barWidth, barHeight);
 			ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
 			ctx.fill();
 			ctx.closePath();
 			ctx.beginPath();		// health bar foreground
-			ctx.rect(players[i].x - barWidth / 2, players[i].y - players[i].size / 2 - cw * 0.01, barWidth * players[i].health / 100, barHeight);
+			ctx.rect(players[i].x - barWidth / 2, players[i].y - players[i].size / 2 - cw * 0.007, barWidth * players[i].health / 100, barHeight);
 			ctx.fillStyle = "#00ff33";
 			ctx.fill();
 			ctx.closePath();
 
 			// ammo clip
-			let ammoBoxSize = cw * 0.01;
-			let ammoBoxSpacing = cw * 0.01;
-			let firstBoxX = players[i].x - // firstBoxX is not in center of the box, but in upper-left corner
+			let ammoBoxSize = cw * 0.0032;
+			let ammoBoxSpacing = cw * 0.002;
+			let ammoTotalWidth = players[i].clipSize * ammoBoxSize + (players[i].clipSize - 1) * ammoBoxSpacing;
+			let firstBoxX = players[i].x - ammoTotalWidth / 2; // firstBoxX is not in center of the box, but in upper-left corner
+			let boxY = players[i].y + players[i].size / 2 + cw * 0.007;
+			for (let j = 0; j < players[i].clipSize; j++)
+			{
+				if ((j+1) <= players[i].clipAmmo)
+				{
+					ctx.beginPath();
+					ctx.rect(firstBoxX + j * (ammoBoxSize + ammoBoxSpacing), boxY, ammoBoxSize, ammoBoxSize);
+					ctx.fillStyle = "#ddd";
+					ctx.fill();
+					ctx.closePath();
+				}
+				else
+				{
+					ctx.beginPath();
+					ctx.rect(firstBoxX + j * (ammoBoxSize + ammoBoxSpacing), boxY, ammoBoxSize, ammoBoxSize);
+					ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+					ctx.fill();
+					ctx.closePath();
+				}	
+				
+			}
+
 		}
 	}
 
@@ -577,6 +602,8 @@ window.onload = function ()
 
 	function endGameCheck()
 	{
+		// TODO: text shadow or box background
+
 		let alivePlayers = 0;
 		let alivePlayerIndex;
 		for (let i = 0; i < numberOfPlayers; i++)
