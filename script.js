@@ -141,6 +141,7 @@ window.onload = function ()
 
 		SpawnBulletCheck()
 		{
+			// TODO: dont spawn if too close to a player; damage?
 			if (this.keybindings.shoot[1] && this.clipAmmo > 0 && this.canShoot)
 			{
 				// disable shooting based on fire rate
@@ -242,7 +243,7 @@ window.onload = function ()
 		restartKey = false;
 		gameState = "menu";
 		players = [];
-		maxNumberOfPlayers = 8;					// maximum number of players
+		maxNumberOfPlayers = 6;					// maximum number of players
 		assets = { images: {}, sounds: [] };
 		mouseX = null;							// mouse x position
 		mouseY = null;							// mouse y position
@@ -265,6 +266,7 @@ window.onload = function ()
 		]
 
 		// player defaults (name, color, keybindings)
+		// TODO: change some controls as shift + Num0 dont work at the same time
 		playerCustDefaults = [];
 		playerCustDefaults[0] = { name: "Player 1", color: colorPalette[1][0], keybindings:
 			{
@@ -272,7 +274,7 @@ window.onload = function ()
 				down: 83,
 				left: 65,
 				right: 68,
-				shoot: 16
+				shoot: 32
 			}
 		};
 		playerCustDefaults[1] = { name: "Player 2", color: colorPalette[0][0], keybindings:
@@ -281,7 +283,7 @@ window.onload = function ()
 				down: 40,
 				left: 37,
 				right: 39,
-				shoot: 96
+				shoot: 110
 			}
 		};
 		playerCustDefaults[2] = { name: "Player 3", color: colorPalette[1][4], keybindings:
@@ -290,15 +292,15 @@ window.onload = function ()
 				down: 75,
 				left: 74,
 				right: 76,
-				shoot: 32
+				shoot: 66
 			}	
 		};
-		playerCustDefaults[3] = { name: "Player 4", color: colorPalette[0][1], keybindings:
+		playerCustDefaults[3] = { name: "Player 4", color: colorPalette[0][3], keybindings:
 			{
-				up: 101,
-				down: 98,
-				left: 97,
-				right: 99,
+				up: 104,
+				down: 101,
+				left: 100,
+				right: 102,
 				shoot: 107
 			}	
 		};
@@ -311,7 +313,7 @@ window.onload = function ()
 				shoot: 88
 			}	
 		};
-		playerCustDefaults[5] = { name: "Player 6", color: colorPalette[0][3], keybindings:
+		playerCustDefaults[5] = { name: "Player 6", color: colorPalette[0][1], keybindings:
 			{
 				up: 36,
 				down: 35,
@@ -320,27 +322,43 @@ window.onload = function ()
 				shoot: 8
 			}	
 		};
-		playerCustDefaults[6] = { name: "Player 7", color: colorPalette[1][2] };
-		playerCustDefaults[7] = { name: "Player 8", color: colorPalette[2][3] };
 
 		// player defaults (coordinates)
 		// player default coordinates are different for games with different number of players
 		// playerCoordDefaults[m][n]; m = number of players in game, n = nth player of total m players
 		playerCoordDefaults = 
 		[
-			// 1 player game
-			[{x: 100, y: 200}],
+			// 1 player game (unused)
+			[{x: cw*0.5, y: ch*0.5}],
 
 			// 2 player game
-			[{x: 100, y: 200}, {x: 200, y: 100}],
+			[{x: cw*0.15, y: ch*0.5}, {x: cw*0.85, y: ch*0.5}],
 
 			// 3 player game
-			[]
+			[{x: cw*0.15, y: ch*0.8}, {x: cw*0.85, y: ch*0.8}, {x: cw*0.5, y: ch*0.2}],
+			
+			// 4 player game
+			[{x: cw*0.15, y: ch*0.2}, {x: cw*0.85 , y: ch*0.2}, {x: cw*0.15, y: ch*0.8}, {x: cw*0.85 , y: ch*0.8}],
+			
+			// 5 player game
+			[{ x: cw * 0.15, y: ch * 0.2 },
+			{ x: cw * 0.85, y: ch * 0.2 },
+			{ x: cw * 0.15, y: ch * 0.8 },
+			{ x: cw * 0.85, y: ch * 0.8 },
+			{ x: cw *0.5, y: ch *0.5 }],
+			
+			// 6 player game
+			[{ x: cw * 0.15, y: ch * 0.2 },
+			{ x: cw * 0.5, y: ch * 0.2 },
+			{ x: cw * 0.85, y: ch * 0.2 },
+			{ x: cw * 0.15, y: ch * 0.8 },
+			{ x: cw * 0.5, y: ch * 0.8 },
+			{ x: cw * 0.85, y: ch * 0.8 }],
 
 		]// end playerCoordDefaults
 	}
 
-	// TODO: disable start if no players
+	// TODO: disable start if no players or 1 player
 	// TODO: exclamation point for unbound keys
 	// TODO: text in FF; keyCode depricated?; test all in other  browsers	
 	function KeyDownHandler(e)
@@ -869,7 +887,7 @@ window.onload = function ()
 	function endGameCheck()
 	{
 		// TODO: remove dead players (but they must respawn next round)
-		// TODO: announce win and continue after x seconds; increment player score counter
+		// TODO: announce win (no dialog? animate?) and continue after x seconds; increment player score counter
 
 		let alivePlayers = 0;
 		let alivePlayerIndex;
@@ -1023,14 +1041,14 @@ window.onload = function ()
 		let name = playerCustDefaults[players.length].name;
 		let color = playerCustDefaults[players.length].color;
 		let keybindings = playerCustDefaults[players.length].keybindings;
-		let player = new Player(name, 0, 0, color, keybindings);
+ 		let player = new Player(name, 0, 0, color, keybindings);
 		players.push(player);
 
 		// TODO: update x and y of all players
 		for (let i = 0; i < players.length; i++)
 		{ // playerCoordDefaults[m][n]; m = number of players in game, n = nth player of total m players
-			players[i].x = playerCoordDefaults[players.length][i].x;
-			players[i].y = playerCoordDefaults[players.length][i].y;
+			players[i].x = playerCoordDefaults[players.length-1][i].x;
+			players[i].y = playerCoordDefaults[players.length-1][i].y;
 		}	
 		
 	}
@@ -1039,7 +1057,7 @@ window.onload = function ()
 	{
 		let fontSizePlayer = cw * 0.024;		// old val 0.028
 		let nameX = cw * 0.12;
-		let nameYoffset = cw * 0.15;				// also: Y position of first name
+		let nameYoffset = cw * 0.2;				// also: Y position of first name
 		let custButtonSize = cw * 0.02;
 		let custButtonX = nameX + cw * 0.27;
 		for (let i = 0; i < players.length; i++)
