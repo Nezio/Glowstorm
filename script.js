@@ -42,7 +42,9 @@ window.onload = function ()
 			this.canShoot = true;
 			this.fireRateDelay = 500;						// fire rate delay in milliseconds; default 500
 			this.fireMode = null;
-			this.rechargeDelay = 5000;						// default 5000
+			this.initialRechargeDelay = 2000;				// default 5000
+			this.rechargeDelay = 500;
+			this.ammoRechargeDate = null;
 			this.bullets = [];
 			this.bulletOffsetFromPlayer = cw * 0.008;
 			this.bulletSpeed = cw * 0.008;					// default 0.006
@@ -146,12 +148,21 @@ window.onload = function ()
 				if (this.clipAmmo < 0)
 					this.clipAmmo = 0;
 				
-				// recharge clip based on recharge delay
-				setTimeout(function ()
+				
+				this.ammoRechargeDate = new Date().getTime() + this.initialRechargeDelay;
+				
+				// NOPE; can't global; p2 stops p1 recharge
+				// maybe use date time ?
+				/*// recharge clip based on recharge delay
+				clearTimeout(ammoRechargeTimeout);
+				//ammoRechargeTimeout = setTimeout()
+				ammoRechargeTimeout = setTimeout(function ()
 				{
 					if (this.clipAmmo < this.clipSize)
 						this.clipAmmo++;
-				}.bind(this), this.rechargeDelay)
+					ammoRechargeTimeout2 = setTimeout(ammoRechargeTimeout, 1000);
+
+				}.bind(this), this.initialRechargeDelay)*/
 
 				// spawn bullet (add it to bullets array) based on fire mode
 				switch (this.fireMode)
@@ -262,6 +273,8 @@ window.onload = function ()
 		numberOfPlayers = 2;
 		endgame = false;
 		restartKey = false;
+		//ammoRechargeTimeout = null;
+		//ammoRechargeTimeout2 = null;
 	}
 
 	function KeyDownHandler(e)
@@ -615,27 +628,40 @@ window.onload = function ()
 			}
 		}
 		
-		if (alivePlayers <= 1)
+		if (alivePlayers <= 1)	// 1
 		{ // endgame
 			PauseGame();
 			endgame = true;
 
-			if (alivePlayers == 1)
+			// background box
+			let boxW = cw * 0.4;
+			let boxH = cw * 0.2;
+			ctx.beginPath();
+			ctx.rect(canvas.width / 2 - boxW / 2, canvas.height / 2 - boxH / 2, boxW, boxH);
+			ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+			ctx.fill();
+			ctx.closePath();
+
+
+			let fontSizeWinner = cw * 0.035;
+			let fontSizeRestart = cw * 0.014;
+
+			if (alivePlayers == 1)	// 1
 			{ // 1 winner
-				ctx.font = "50px Arial";
+				ctx.font = fontSizeWinner + "px Arial";
 				ctx.fillStyle = "#eee";
 				ctx.textAlign = "center";
 				ctx.fillText(players[alivePlayerIndex].name + " wins!", canvas.width / 2, canvas.height / 2);
 			}
-			if (alivePlayers == 0)
+			if (alivePlayers == 0)	// 0
 			{ // no winners
-				ctx.font = "50px Arial";
+				ctx.font = fontSizeWinner + "px Arial";
 				ctx.fillStyle = "#eee";
 				ctx.textAlign = "center";
 				ctx.fillText("Good job, nobody wins!", canvas.width / 2, canvas.height / 2);
 			}
 
-			ctx.font = "20px Arial";
+			ctx.font = fontSizeRestart + "px Arial";
 			ctx.fillStyle = "#aaa";
 			ctx.textAlign = "center";
 			ctx.fillText("Press [Enter] to restart", canvas.width / 2, canvas.height / 2 + 40);
@@ -656,6 +682,13 @@ window.onload = function ()
 		{
 			players[i].MoveCheck();			// check if player can move (detect key-press; control player speed; wall collision)
 			players[i].SpawnBulletCheck();	// check if bullet can spawn (detect key-press; clip size and fire rate control)
+
+			// recharge bullets
+			if (players[i].clipAmmo < players[i].clipSize && new Date().getTime() >= players[i].ammoRechargeDate && !endgame)
+			{
+				players[i].clipAmmo++;
+				players[i].ammoRechargeDate = new Date().getTime() + players[i].rechargeDelay;
+			}	
 		}
 
 		CollisionCheckPlayers();			// player with player collisions
